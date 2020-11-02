@@ -16,8 +16,11 @@ from Bio.Blast.Applications import NcbiblastnCommandline, NcbimakeblastdbCommand
 
 class GenerateProbe:
     # !!!! notice the key and value in assembly dict
-    def __init__(self, seq_path):
-        self.seq = SeqIO.read(seq_path, 'fasta')
+    def __init__(self, _seq_obj):
+        """
+        :param _seq_obj: a Bio.Seq object
+        """
+        self.seq = _seq_obj
         self.assembly_dict = {}
 
     def probe_generate(self, _length=20):
@@ -31,9 +34,7 @@ class GenerateProbe:
         return self.assembly_dict
 
     def probe_save(self, save_path):
-        probe_lines = [
-            '>' + seq_id + '\n' + seq for seq,
-            seq_id in self.assembly_dict.items()]
+        probe_lines = ['>' + seq_id + '\n' + seq for seq, seq_id in self.assembly_dict.items()]
         with open(save_path, 'w') as f:
             f.write('\n'.join(probe_lines))
 
@@ -106,7 +107,7 @@ class BLASTParse:
 
 
 class Database:
-    def __init__(self, fa_path, db_path):
+    def __init__(self, fa_path, db_path, exec):
         """
         Since chloroplast was a circular, we need cut the first XX bp to the end
         :param fa_path:
@@ -114,6 +115,7 @@ class Database:
         """
         self.in_path = fa_path
         self.out_path = db_path
+        self.exec = exec
 
     def database_generate(self, _length=20):
         fasta_in = SeqIO.parse(self.in_path, 'fasta')
@@ -124,19 +126,21 @@ class Database:
         SeqIO.write(fasta_out, self.out_path, 'fasta')
 
     def database_blast(self):
-        database_cmd = NcbimakeblastdbCommandline(dbtype='nucl',
-                                                  input_file=self.out_path)
+        database_cmd = NcbimakeblastdbCommandline(
+            cmd=os.path.join(self.exec, 'blastn'),
+            dbtype='nucl',
+            input_file=self.out_path)
         database_cmd()
 
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(
-        prog='Probe', description='This script was for generating probe')
+        prog='DSS identification', description='This script was for generating probe')
     sub_parser = parser.add_subparsers(title='Available', required=True)
 
     database_parser = sub_parser.add_parser(
-        'database', help='Generate database for XXX')
+        'database', help='Generate database for DSS identification')
     database_parser.add_argument('-i', '--input_fasta', required=True,
                                  help='<file_path>  The genome fasta file')
     database_parser.add_argument('-l', '--length', type=int, default=20,
@@ -147,7 +151,7 @@ if __name__ == '__main__':
     database_parser.set_defaults(subcmd="database")
 
     probe_parser = sub_parser.add_parser(
-        'probe', help='Generate probe for species based on database')
+        'iden', help='Identification DSS based on database')
     probe_parser.add_argument('-m', '--meta', required=True,
                               help='<file path> The meta file')
     probe_parser.add_argument('-d', '--database', required=True,
