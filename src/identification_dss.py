@@ -40,11 +40,10 @@ class GenerateProbe:
 
 
 class BLASTParse:
-    def __init__(self, _seq_path, _asm_list, _database_path, _out_dir, _tmp_dir_path, _length, _thread, _exec=''):
+    def __init__(self, _seq_path, _asm_list, _database_path, _tmp_dir_path, _length, _thread, _exec=''):
         self.seq_path = _seq_path
         self.asm_list = _asm_list
         self.db_path = _database_path
-        self.out_dir = _out_dir
         self.tmp_dir = _tmp_dir_path
         self.length = _length
         self.thread = _thread
@@ -64,7 +63,7 @@ class BLASTParse:
             evalue=10,
             out=os.path.join(self.tmp_dir, _group + '.txt'),
             max_hsps=1,
-            max_target_seqs=len(self.seq_path)+1)
+            max_target_seqs=len(self.asm_list)+1)
         blastn_cmd()
 
     def blast_parse(self):
@@ -83,27 +82,22 @@ class BLASTParse:
         _dss_list = list(set(_blast_df2['query'].to_list()) - set(_blast_df1['query'].to_list()))
         # DSS set empty
         if not _dss_list:
-            _result_tb = pd.DataFrame()
+            _result_tb = pd.DataFrame.from_dict({0: {'seq':  '', 'position': '', 'GC': ''}}, 'index')
         else:
-            _kmer_dict = {_.seq: _.id for _ in
+            _kmer_dict = {_.id: _.seq for _ in
                           SeqIO.parse(self.seq_path, 'fasta')
                           }
             _tmp_list = []
             for _dss in _dss_list:
                 _tmp_list.append(
                                  {'seq': _kmer_dict[_dss],
-                                  'position': _kmer_dict[_dss].split('_')[-1] +
+                                  'position': _dss.split('_')[-1] +
                                               '-' +
-                                              str(int(_kmer_dict[_dss].split('_')[-1])+self.length-1),
-                                  'GC': GC(_dss)}
+                                              str(int(_dss.split('_')[-1])+self.length-1),
+                                  'GC': GC(_kmer_dict[_dss])}
                                  )
             _result_tb = pd.DataFrame(_tmp_list)
-        _result_tb['group'] = _group
-        _result_tb[['group', 'seq', 'position', 'GC']].\
-            to_csv(os.path.join(self.out_dir, _group + '.txt'),
-                   sep='\t',
-                   index=False,
-                   header=False)
+        return _result_tb
 
 
 class Database:
@@ -127,7 +121,7 @@ class Database:
 
     def database_blast(self):
         database_cmd = NcbimakeblastdbCommandline(
-            cmd=os.path.join(self.exec, 'blastn'),
+            cmd=os.path.join(self.exec, 'makeblastdb'),
             dbtype='nucl',
             input_file=self.out_path)
         database_cmd()
@@ -136,8 +130,9 @@ class Database:
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(
-        prog='DSS identification', description='This script was for generating probe')
-    sub_parser = parser.add_subparsers(title='Available', required=True)
+        prog='DSS identification', description='This script was for identifying DNA signature sequences(DSS)')
+    sub_parser = parser.add_subparsers(title='Available', dest='database/iden')
+    sub_parser.required = True
 
     database_parser = sub_parser.add_parser(
         'database', help='Generate database for DSS identification')
@@ -167,15 +162,15 @@ if __name__ == '__main__':
                               help='<directory path> result directory')
     probe_parser.add_argument('-b', '--blast', default='',
                               help='<directory path> BLAST exec directory <If your BLAST software not in PATH>')
-    probe_parser.set_defaults(subcmd="probe")
+    probe_parser.set_defaults(subcmd="iden")
     args = parser.parse_args()
 
     if args.subcmd == "database":
-        db = Database(args.input_fasta, args.output_fasta)
+        db = Database(args.input_fasta, args.output_fasta, args.blast)
         db.database_generate(args.length)
         db.database_blast()
 
-    elif args.subcmd == "probe":
+    elif args.subcmd == "iden":
         seq_dict = {_.id: _ for _ in SeqIO.parse(args.database, 'fasta')}
         meta_info = pd.read_table(args.meta, names=['group', 'assembly'])
         meta_info = meta_info.groupby('group')['assembly'].apply(list).reset_index(name='assembly')
@@ -189,27 +184,30 @@ if __name__ == '__main__':
         # release memory
         del seq_dict
         # set temporary directory
-        if args.tmp is None:
-            args.tmp = tempfile.TemporaryDirectory()
-        else:
-            if not os.path.isdir(args.tmp):
-                os.makedirs(args.tmp)
-            args.tmp = tempfile.TemporaryDirectory(dir=args.tmp)
-
+        args.tmp = tempfile.mktemp(dir=args.tmp)
+        os.makedirs(args.tmp)
+ 
         for _idx, _row in meta_info.iterrows():
             pb = GenerateProbe(used_seq_dict[_row['assembly'][0]])
             pb.probe_generate(args.length)
-            pb.probe_save(os.path.join(args.tmp.name, _row['group'] + '.fasta'))
+            pb.probe_save(os.path.join(args.tmp, _row['group'] + '.fasta'))
             ap = BLASTParse(
-                os.path.join(args.tmp.name, _row['group'] + '.fasta'),
+                os.path.join(args.tmp, _row['group'] + '.fasta'),
                 _row['assembly'],
                 args.database,
-                args.output,
-                args.tmp.name,
+                args.tmp,
                 args.length,
                 args.threads,
                 args.blast
             )
             ap.blast_cmd()
-            ap.blast_parse()
-        args.tmp.cleanup()
+            result_tb = ap.blast_parse()
+            result_tb['assembly'] = _row['assembly'][0]
+            result_tb['group'] = _row['group']
+            result_tb[['group', 'assembly', 'seq', 'position', 'GC']].\
+                to_csv(os.path.join(args.output, _row['group'] + '.txt'),
+                       sep='\t',
+                       index=False)
+            for f in args.tmp:
+                os.remove(f)
+        
