@@ -8,6 +8,7 @@
 
 import os
 import tempfile
+import shutil
 import pandas as pd
 from Bio import SeqIO
 from Bio.SeqUtils import GC
@@ -139,10 +140,12 @@ if __name__ == '__main__':
     database_parser.add_argument('-i', '--input_fasta', required=True,
                                  help='<file_path>  The genome fasta file')
     database_parser.add_argument('-l', '--length', type=int, default=20,
-                              help='<int> DSS length <default=20>')
+                                 help='<int> DSS length <default=20>')
     database_parser.add_argument('-o', '--output_fasta', required=True,
                                  help='<file_path>  The genome fasta output file (a BLAST database would '
                                       'be constructed)')
+    database_parser.add_argument('-b', '--blast', default='',
+                                 help='<directory path> BLAST exec directory <If your BLAST software not in PATH>')                                  
     database_parser.set_defaults(subcmd="database")
 
     probe_parser = sub_parser.add_parser(
@@ -185,9 +188,9 @@ if __name__ == '__main__':
         del seq_dict
         # set temporary directory
         args.tmp = tempfile.mktemp(dir=args.tmp)
-        os.makedirs(args.tmp)
  
         for _idx, _row in meta_info.iterrows():
+            os.makedirs(args.tmp)
             pb = GenerateProbe(used_seq_dict[_row['assembly'][0]])
             pb.probe_generate(args.length)
             pb.probe_save(os.path.join(args.tmp, _row['group'] + '.fasta'))
@@ -208,6 +211,9 @@ if __name__ == '__main__':
                 to_csv(os.path.join(args.output, _row['group'] + '.txt'),
                        sep='\t',
                        index=False)
-            for f in args.tmp:
-                os.remove(f)
+            # remove temporary directory
+            for r,d,f in os.walk(args.tmp):
+                for files in f:
+                    os.remove(os.path.join(r,files))
+                os.removedirs(r) 
         
