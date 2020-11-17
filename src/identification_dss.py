@@ -103,9 +103,11 @@ class BLASTParse:
 class Database:
     def __init__(self, fa_path, db_path, exec):
         """
-        Since chloroplast was a circular, we need cut the first XX bp to the end
-        :param fa_path:
-        :param db_path:
+        Since chloroplast was a circular, we need cut the base at the beginning which equal to the length of the DSS
+        to the end
+        :param fa_path: the input fasta path
+        :param db_path: the output prepared database path
+        :param exec: the BLAST executor path. If it in the PATH, this could be empty
         """
         self.in_path = fa_path
         self.out_path = db_path
@@ -215,4 +217,3 @@ if __name__ == '__main__':
                 for files in f:
                     os.remove(os.path.join(r,files))
                 os.removedirs(r) 
-        
