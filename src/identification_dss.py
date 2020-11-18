@@ -121,12 +121,16 @@ class Database:
             fasta_out.append(assembly)
         SeqIO.write(fasta_out, self.out_path, 'fasta')
 
+    def copy_file(self):
+        open(self.out_path,'wb').write(open(self.in_path,'rb').read())
+
     def database_blast(self):
         database_cmd = NcbimakeblastdbCommandline(
             cmd=os.path.join(self.exec, 'makeblastdb'),
             dbtype='nucl',
             input_file=self.out_path)
         database_cmd()
+        print('IdenDSS database created success!')
 
 
 if __name__ == '__main__':
@@ -142,6 +146,8 @@ if __name__ == '__main__':
                                  help='<file_path>  The genome fasta file')
     database_parser.add_argument('-l', '--length', type=int, default=20,
                                  help='<int> DSS length <default=20>')
+    database_parser.add_argument('-c', '--circular',  action='store_true',
+                                 help='the sequences are circular or not')                           
     database_parser.add_argument('-o', '--output_fasta', required=True,
                                  help='<file_path>  The genome fasta output file (a BLAST database would '
                                       'be constructed)')
@@ -171,7 +177,10 @@ if __name__ == '__main__':
 
     if args.subcmd == "database":
         db = Database(args.input_fasta, args.output_fasta, args.blast)
-        db.database_generate(args.length)
+        if args.circular:
+            db.database_generate(args.length)
+        else:
+            db.copy_file()
         db.database_blast()
 
     elif args.subcmd == "iden":
