@@ -12,6 +12,7 @@ import pandas as pd
 from Bio import SeqIO
 from Bio.SeqUtils import GC
 from Bio.Blast.Applications import NcbiblastnCommandline, NcbimakeblastdbCommandline
+import argparse
 
 
 class GenerateProbe:
@@ -133,10 +134,9 @@ class Database:
         print('IdenDSS database created success!')
 
 
-if __name__ == '__main__':
-    import argparse
+def getArgs():
     parser = argparse.ArgumentParser(
-        prog='DSS identification', description='This script was for identifying DNA signature sequences(DSS)')
+    prog='DSS identification', description='This script was for identifying DNA signature sequences(DSS)')
     sub_parser = parser.add_subparsers(title='Available', dest='database/iden')
     sub_parser.required = True
 
@@ -174,7 +174,10 @@ if __name__ == '__main__':
                               help='<directory path> BLAST exec directory <If your BLAST software not in PATH>')
     probe_parser.set_defaults(subcmd="iden")
     args = parser.parse_args()
+    return args
 
+def main():
+    args = getArgs()
     if args.subcmd == "database":
         db = Database(args.input_fasta, args.output_fasta, args.blast)
         if args.circular:
@@ -226,3 +229,6 @@ if __name__ == '__main__':
                 for files in f:
                     os.remove(os.path.join(r,files))
                 os.removedirs(r) 
+
+if __name__ == '__main__':
+    main()
