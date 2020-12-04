@@ -15,6 +15,13 @@ from collections import defaultdict
 from Bio.Blast.Applications import NcbiblastnCommandline, NcbimakeblastdbCommandline
 
 
+def del_dir(_dir):
+    for r, d, f in os.walk(_dir):
+        for files in f:
+            os.remove(os.path.join(r, files))
+        os.removedirs(r)
+
+
 def probe_generate_c(_seq_obj, _length=20):
     """
 
@@ -76,15 +83,11 @@ class BLASTParse:
         _group = os.path.splitext(os.path.split(self.seq_path)[1])[0]
         _blast_df = pd.read_table(os.path.join(self.tmp_dir, _group + '.txt'),
                                   names=['query', 'subject', 'length', 'identity', 'evalue'])
-        _blast_df = _blast_df[(_blast_df['length'] == self.length) & (_blast_df['identity'] == 100)]
+        keep_set = set(_blast_df['query'].to_list())
+        _blast_df = _blast_df[(_blast_df['length'].values == self.length) & (_blast_df['identity'].values == 100)]
         # Find DSS **in** other species
-        _blast_df1 = _blast_df.loc[~(_blast_df['subject'].isin(self.asm_list))].drop_duplicates(subset=['query'])
-        # Find DSS conserved in species
-        _blast_df2 = _blast_df[_blast_df['subject'].isin(self.asm_list)]
-        _blast_df2 = _blast_df2.groupby('query')['subject'].count().reset_index()
-        _blast_df2 = _blast_df2[_blast_df2['subject'] == len(self.asm_list)]
-        # Find intersection as species DSS
-        _dss_list = list(set(_blast_df2['query'].to_list()) - set(_blast_df1['query'].to_list()))
+        drop_set = set(_blast_df.loc[_blast_df['subject'].map(lambda x: x not in self.asm_list)]['query'].to_list())
+        _dss_list = list( keep_set - drop_set) 
         # DSS set empty
         if not _dss_list:
             _result_tb = pd.DataFrame.from_dict({0: {'seq':  '', 'position': '', 'GC': ''}}, 'index')
@@ -95,7 +98,7 @@ class BLASTParse:
             _tmp_list = []
             for _dss in _dss_list:
                 _tmp_list.append(
-                                 {'assembly': '_'.join('NCABA_2_1'.split('_')[:-1]),
+                                 {'assembly': '_'.join(_dss.split('_')[:-1]),
                                   'seq': _kmer_dict[_dss],
                                   'position': _dss.split('_')[-1] +
                                               '-' +
@@ -118,10 +121,11 @@ def iden_main(args):
     # by sample for pre-BLAST
     _group_sample_table = _table.groupby(['group', 'sample'])['assembly'].apply(list).reset_index(name='assembly')
     for _idx, _row in _group_table.iterrows():
+        os.mkdir(args.tmp)
         # pre-probe
         _super_probe = defaultdict(str)
         for _asm in _row['assembly']:
-            for _k, _v in probe_generate(seq_dict[_asm], args.length):
+            for _k, _v in probe_generate(seq_dict[_asm], args.length).items():
                 _super_probe[_k] = _v
         _probe_lines = ['>' + seq_id + '\n' + seq for seq, seq_id in _super_probe.items()]
         with open(os.path.join(args.tmp, 'pre_probe.fasta'), 'w') as f:
@@ -129,7 +133,7 @@ def iden_main(args):
         del _super_probe, _probe_lines
         # pre-blast
         ## make blast database
-        _db_lines = ['>' + seq_id + '\n' + seq_dict[seq_id].seq for seq_id in _row['assembly']]
+        _db_lines = ['>' + seq_id + '\n' + str(seq_dict[seq_id].seq) for seq_id in _row['assembly']]
         with open(os.path.join(args.tmp, 'pre_blast_db.fasta'), 'w') as f:
             f.write('\n'.join(_db_lines))
         del _db_lines
@@ -156,17 +160,19 @@ def iden_main(args):
         ## parse result
         _blast_df = pd.read_table(os.path.join(args.tmp, 'pre_blast.txt'),
                                   names=['query', 'subject', 'length', 'identity', 'evalue'])
-        _blast_df = _blast_df[(_blast_df['length'] == args.length) & (_blast_df['identity'] == 100)]
-        _check_list = _group_sample_table.loc[_group_sample_table['group'] == _row['group'], 'assembly'].to_list()
+        _blast_df = _blast_df[(_blast_df['length'].values == args.length) & (_blast_df['identity'].values == 100)]
+        _check_list = _group_sample_table.loc[_group_sample_table['group'].values == _row['group'], 'assembly'].to_list()
         _probe_list = []
         for _sample in _check_list:
-            _probe_list.append(set(_blast_df.loc[~(_blast_df['subject'].isin(_sample))]['query'].to_list()))
+            _probe_list.append(set(_blast_df.loc[_blast_df['subject'].map(lambda x: x in _sample)]['query'].to_list()))
         _probe_result = list(reduce(lambda x,y: x & y, _probe_list))
         del _probe_list
-        _probe_list = [_ for _ in SeqIO.parse(os.path.join(args.tmp, 'pre_probe.fasta'), 'fasta') if _.id in
-                       _probe_result]
-        SeqIO.write(_probe_list, os.path.join(args.tmp, 'probe.fasta'),'fasta')
-        del _probe_list
+        _tmp_dict = {_.id: _ for _ in SeqIO.parse(os.path.join(args.tmp, 'pre_probe.fasta'), 'fasta')}
+        _probe_dict = {}
+        for _id in _probe_result:
+            _probe_dict.setdefault(_id, _tmp_dict[_id])
+        SeqIO.write(list(_probe_dict.values()), os.path.join(args.tmp, 'probe.fasta'),'fasta')
+        del _tmp_dict, _probe_dict
         ## BLAST
         ap = BLASTParse(os.path.join(args.tmp, 'probe.fasta'),
                         _row['assembly'],
@@ -182,3 +188,4 @@ def iden_main(args):
             to_csv(os.path.join(args.output, _row['group'] + '.txt'),
                    sep='\t',
                    index=False)
+        del_dir(args.tmp)

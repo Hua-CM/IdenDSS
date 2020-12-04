@@ -14,13 +14,6 @@ from probe_utils import iden_main
 import argparse
 
 
-def del_dir(_dir):
-    for r, d, f in os.walk(_dir):
-        for files in f:
-            os.remove(os.path.join(r, files))
-        os.removedirs(r)
-
-
 class Database:
     def __init__(self, fa_path, db_path, _exec):
         """
@@ -113,8 +106,6 @@ def main():
         # set temporary directory
         args.tmp = tempfile.mktemp(dir=args.tmp)
         iden_main(args)
-        # remove temporary directory
-        del_dir(args.tmp)
 
 
 if __name__ == '__main__':
