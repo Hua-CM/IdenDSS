@@ -14,6 +14,7 @@ from functools import reduce
 from collections import defaultdict
 from Bio.Blast.Applications import NcbiblastnCommandline, NcbimakeblastdbCommandline
 
+
 def probe_generate_c(_seq_obj, _length=20):
     """
 
@@ -28,6 +29,7 @@ def probe_generate_c(_seq_obj, _length=20):
         assembly_dict.setdefault(str(sequence[index: index + _length]), _seq_obj.id + '_' + str(index + 1))
     return assembly_dict
 
+
 def probe_generate_l(_seq_obj, _length=20):
     """
 
@@ -40,6 +42,7 @@ def probe_generate_l(_seq_obj, _length=20):
     for index in range(len(_seq_obj.seq) - (_length - 1)):
         assembly_dict.setdefault(str(_seq_obj.seq[index: index + _length]), _seq_obj.id + '_' + str(index + 1))
     return assembly_dict
+
 
 class BLASTParse:
     def __init__(self, _seq_path, _asm_list, _database_path, _tmp_dir_path, _length, _thread, _exec=''):
