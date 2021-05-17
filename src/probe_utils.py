@@ -67,9 +67,9 @@ class BLASTParse:
             cmd=os.path.join(self.exec, 'blastn'),
             query=self.seq_path,
             db=self.db_path,
-            task='blastn-short',
+            task='blastn-short' if self.length <30 else "blastn",
             dust='no',
-            word_size=min(round(self.length/2)-1, 11),
+            word_size=round(self.length/2)-1,
             outfmt='\"6 qacc sacc length pident evalue\"',
             num_threads=self.thread,
             evalue=10,
@@ -90,7 +90,7 @@ class BLASTParse:
         _dss_list = list( keep_set - drop_set) 
         # DSS set empty
         if not _dss_list:
-            _result_tb = pd.DataFrame.from_dict({0: {'seq':  '', 'position': '', 'GC': ''}}, 'index')
+            _result_tb = pd.DataFrame.from_dict({0: {'assembly':self.asm_list[0], 'seq':  '', 'position': '', 'GC': ''}}, 'index')
         else:
             _kmer_dict = {_.id: _.seq for _ in
                           SeqIO.parse(self.seq_path, 'fasta')
@@ -184,6 +184,7 @@ def iden_main(args):
         ap.blast_cmd()
         _result_tb = ap.blast_parse()
         _result_tb['group'] = _row['group']
+        _result_tb['assembly'] = _row['assembly'][0]
         _result_tb[['group', 'assembly', 'seq', 'position', 'GC']]. \
             to_csv(os.path.join(args.output, _row['group'] + '.txt'),
                    sep='\t',
