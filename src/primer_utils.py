@@ -96,7 +96,7 @@ def primer_main(args):
         pre_cfg(_meta_tb[['assembly', 'start', 'end']],
                 _meta_fasta,
                 os.path.join(args.tmp, _group + '.p3in'))
-        setting_file = os.path.abspath(os.path.join(__file__, '../template/DSS_settings.txt'))
+        setting_file = os.path.abspath(os.path.join(__file__, '../../template/DSS_settings.txt'))
         os.system(' '.join(['primer3_core',
                             '--p3_settings_file=' + setting_file,
                             '--output=' + os.path.join(args.tmp, _group + '.p3out'),
