@@ -104,5 +104,5 @@ def primer_main(args):
                            )
                   )
         parse_output(os.path.join(args.tmp, _group + '.p3out'),
-                     os.path.join(args.output, _group + '.txt'))
+                     os.path.join(args.output, _group + '_primer.txt'))
         del_dir(args.tmp)
