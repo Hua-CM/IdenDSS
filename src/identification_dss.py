@@ -11,6 +11,7 @@ import tempfile
 from Bio import SeqIO
 from Bio.Blast.Applications import NcbimakeblastdbCommandline
 from probe_utils import iden_main
+from primer_utils import primer_main
 import argparse
 
 
@@ -87,6 +88,8 @@ def getArgs():
                               help='<directory path> result directory')
     probe_parser.add_argument('-b', '--blast', default='',
                               help='<directory path> BLAST exec directory <If your BLAST software not in PATH>')
+    probe_parser.add_argument('-p', '--primer', action='store_true',
+                              help='Design Primer at the same time(Need primer3_core in your PATH)')
     probe_parser.set_defaults(subcmd="iden")
     args = parser.parse_args()
     return args
@@ -106,6 +109,8 @@ def main():
         # set temporary directory
         args.tmp = tempfile.mktemp(dir=args.tmp)
         iden_main(args)
+        if args.primer:
+            primer_main(args)
 
 
 if __name__ == '__main__':

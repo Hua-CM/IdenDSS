@@ -66,8 +66,6 @@ class BLASTParse:
         blastn_cmd()
 
     def blast_parse(self):
-        _putative_kmer = []
-        _group = os.path.splitext(os.path.split(self.seq_path)[1])[0]
         _blast_df = pd.read_table(os.path.join(self.tmp_dir, self.group + '.txt'),
                                   names=['query', 'subject', 'length', 'identity', 'evalue'])
         keep_set = set(_blast_df['query'].to_list())
@@ -126,7 +124,7 @@ def iden_main(args):
                 for _asm in _assembly:
                     for _k, _v in probe_generate(seq_dict[_asm], args.length).items():
                         _probe[_k] = _v
-                        _probe[Seq('_k').reverse_complement().__str__()] = _v
+                        _probe[Seq(_k).reverse_complement().__str__()] = _v
                 _sample_probe[_sample] = _probe
         _probe_result = set(_sample_probe[fix_sample].keys()) & \
             reduce(lambda x, y: x & y,
@@ -137,7 +135,8 @@ def iden_main(args):
             f.write('\n'.join(_probe_lines))
         del _probe_result, _probe_lines
         # BLAST
-        ap = BLASTParse(os.path.join(args.tmp, 'probe.fasta'),
+        ap = BLASTParse(_row['group'],
+                        os.path.join(args.tmp, 'probe.fasta'),
                         _row['assembly'],
                         args.database,
                         args.tmp,
