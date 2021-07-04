@@ -126,9 +126,12 @@ def iden_main(args):
                         _probe[_k] = _v
                         _probe[Seq(_k).reverse_complement().__str__()] = _v
                 _sample_probe[_sample] = _probe
-        _probe_result = set(_sample_probe[fix_sample].keys()) & \
-            reduce(lambda x, y: x & y,
-                   [set(_sample_probe[_sample].keys()) for _sample in list(sample_assembly.keys())[1:]])
+        try:
+            _probe_result = set(_sample_probe[fix_sample].keys()) & \
+                reduce(lambda x, y: x & y,
+                       [set(_sample_probe[_sample].keys()) for _sample in list(sample_assembly.keys())[1:]])
+        except TypeError:
+            _probe_result = set(_sample_probe[fix_sample].keys())
         _probe_result = {_probe: _sample_probe[fix_sample][_probe] for _probe in list(_probe_result)}
         _probe_lines = ['>' + seq_id + '\n' + seq for seq, seq_id in _probe_result.items()]
         with open(os.path.join(args.tmp, 'probe.fasta'), 'w') as f:

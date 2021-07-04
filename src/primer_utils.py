@@ -24,11 +24,14 @@ def get_seq(_seq, _start, _end):
         return _seq.seq[_start-401: _end+400]
 
 
-def pre_cfg(_meta_tb, _meta_fasta, _outpath):
+def pre_cfg(_meta_tb, _meta_fasta, _outpath, _circular):
     _write_list = []
     for _idx, _item in _meta_tb.iterrows():
-        if int(_item['start']) < 400 or int(_item['end']) > len(_meta_fasta[_item['assembly']].seq)-400:
-            continue
+        if not _circular:
+            if int(_item['start']) < 400 or int(_item['end']) > len(_meta_fasta[_item['assembly']].seq)-400:
+                continue
+        else:
+            pass
         _sequence_id = "SEQUENCE_ID=" + \
                        str(_meta_fasta[_item['assembly']].id) + \
                        "_" + str(_item['start']) + \
@@ -88,14 +91,17 @@ def parse_output(_p3out, _output):
 def primer_main(args):
     _table = pd.read_table(args.meta, names=['group', 'sample', 'assembly'], dtype=str)
     _groups = list(set(_table['group'].to_list()))
+    _meta_fasta = {_.id: _ for _ in SeqIO.parse(args.database, 'fasta')}
     for _group in _groups:
         _meta_tb = pd.read_table(os.path.join(args.output, _group + '.txt'))
         _meta_tb[['start', 'end']] = _meta_tb.apply((lambda x: x['position'].split('-')), axis=1, result_type="expand")
-        _meta_fasta = {_.id: _ for _ in SeqIO.parse(args.database, 'fasta')}
+        if sum(_meta_tb['seq'].isna()) == 1:
+            continue
         os.mkdir(args.tmp)
         pre_cfg(_meta_tb[['assembly', 'start', 'end']],
                 _meta_fasta,
-                os.path.join(args.tmp, _group + '.p3in'))
+                os.path.join(args.tmp, _group + '.p3in'),
+                args.circular)
         setting_file = os.path.abspath(os.path.join(__file__, '../../template/DSS_settings.txt'))
         os.system(' '.join(['primer3_core',
                             '--p3_settings_file=' + setting_file,
