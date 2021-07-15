@@ -149,7 +149,6 @@ def iden_main(args):
         ap.blast_cmd()
         _result_tb = ap.blast_parse()
         _result_tb['group'] = _row['group']
-        _result_tb['assembly'] = _row['assembly'][0]
         _result_tb[['group', 'assembly', 'seq', 'position', 'GC']]. \
             to_csv(os.path.join(args.output, _row['group'] + '.txt'),
                    sep='\t',
