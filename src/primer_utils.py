@@ -91,12 +91,12 @@ def parse_output(_p3out, _output):
 def primer_main(args):
     _table = pd.read_table(args.meta, names=['group', 'sample', 'assembly'], dtype=str)
     _groups = list(set(_table['group'].to_list()))
-    _meta_fasta = {_.id: _ for _ in SeqIO.parse(args.database, 'fasta')}
+    _meta_fasta = SeqIO.to_dict(SeqIO.parse(args.database, 'fasta'))
     for _group in _groups:
         _meta_tb = pd.read_table(os.path.join(args.output, _group + '.txt'))
-        _meta_tb[['start', 'end']] = _meta_tb.apply((lambda x: x['position'].split('-')), axis=1, result_type="expand")
         if sum(_meta_tb['seq'].isna()) == 1:
             continue
+        _meta_tb[['start', 'end']] = _meta_tb.apply((lambda x: x['position'].split('-')), axis=1, result_type="expand")
         os.mkdir(args.tmp)
         pre_cfg(_meta_tb[['assembly', 'start', 'end']],
                 _meta_fasta,
