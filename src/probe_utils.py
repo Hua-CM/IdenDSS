@@ -134,6 +134,8 @@ def iden_main(args):
             _probe_result = set(_sample_probe[fix_sample].keys())
         _probe_result = {_probe: _sample_probe[fix_sample][_probe] for _probe in list(_probe_result)}
         _probe_lines = ['>' + seq_id + '\n' + seq for seq, seq_id in _probe_result.items()]
+        if len(_probe_lines) == 0:
+            print('No conserved k-mers in %s samples' % _row['group'])
         with open(os.path.join(args.tmp, 'probe.fasta'), 'w') as f:
             f.write('\n'.join(_probe_lines))
         del _probe_result, _probe_lines
