@@ -136,6 +136,8 @@ def search_rflp(args):
     # do RFLP search
     for _file in file_list:
         _dss_tb = pd.read_table(_file)
+        if sum(_dss_tb['seq'].isna()) == 1:
+            continue
         _dss_tb[['start', 'end']] = _dss_tb.apply((lambda x: x['position'].split('-')), axis=1, result_type="expand")
         in_list = []
         _write_list = []
