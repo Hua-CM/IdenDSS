@@ -1,51 +1,17 @@
 # -*- coding: utf-8 -*-
 # @Time : 2020/11/1 19:18
 # @Author : Zhongyi Hua
-# @FileName: identification_dss.py
+# @FileName: IDSS.py
 # @Usage: 
 # @Note:
 # @E-mail: njbxhzy@hotmail.com
 
-import os
-import tempfile
-from Bio import SeqIO
-from Bio.Blast.Applications import NcbimakeblastdbCommandline
+
+import tempfile, os
 from probe_utils import iden_main
 from primer_utils import primer_main
+from plugins import Database, search_rflp
 import argparse
-
-
-class Database:
-    def __init__(self, fa_path, db_path, _exec):
-        """
-        Since chloroplast was a circular, we need cut the base at the beginning which equal to the length of the DSS
-        to the end
-        :param fa_path: the input fasta path
-        :param db_path: the output prepared database path
-        :param exec: the BLAST executor path. If it in the PATH, this could be empty
-        """
-        self.in_path = fa_path
-        self.out_path = db_path
-        self.exec = _exec
-
-    def database_generate(self, _length=20):
-        fasta_in = SeqIO.parse(self.in_path, 'fasta')
-        fasta_out = []
-        for assembly in fasta_in:
-            assembly.seq = assembly.seq + assembly.seq[0:_length-1]
-            fasta_out.append(assembly)
-        SeqIO.write(fasta_out, self.out_path, 'fasta')
-
-    def copy_file(self):
-        open(self.out_path, 'wb').write(open(self.in_path, 'rb').read())
-
-    def database_blast(self):
-        database_cmd = NcbimakeblastdbCommandline(
-            cmd=os.path.join(self.exec, 'makeblastdb'),
-            dbtype='nucl',
-            input_file=self.out_path)
-        database_cmd()
-        print('IdenDSS database created success!')
 
 
 def getArgs():
@@ -56,13 +22,13 @@ def getArgs():
 
     database_parser = sub_parser.add_parser(
         'database', help='Generate database for DSS identification')
-    database_parser.add_argument('-i', '--input_fasta', required=True,
+    database_parser.add_argument('-i', '--input', required=True,
                                  help='<file_path>  The genome fasta file')
     database_parser.add_argument('-l', '--length', type=int, default=20,
                                  help='<int> DSS length <default=20>')
     database_parser.add_argument('-c', '--circular',  action='store_true',
                                  help='the sequences are circular or not')                           
-    database_parser.add_argument('-o', '--output_fasta', required=True,
+    database_parser.add_argument('-o', '--output', required=True,
                                  help='<file_path>  The genome fasta output file (a BLAST database would '
                                       'be constructed)')
     database_parser.add_argument('-b', '--blast', default='',
@@ -88,17 +54,38 @@ def getArgs():
                               help='<directory path> result directory')
     probe_parser.add_argument('-b', '--blast', default='',
                               help='<directory path> BLAST exec directory <If your BLAST software not in PATH>')
-    probe_parser.add_argument('-p', '--primer', action='store_true',
-                              help='Design Primer at the same time(Need primer3_core in your PATH)')
     probe_parser.set_defaults(subcmd="iden")
+
+    plugin_parser = sub_parser.add_parser(
+        'plugin', help='Some plugin for DSS results')
+    plugin_parser.add_argument('-c', '--circular',  action='store_true',
+                               help='the sequences are circular or not')
+    plugin_parser.add_argument('-i', '--input', required=True,
+                               help='<file_path>  A meta file. One DSS result file path per line ')
+    plugin_parser.add_argument('-o', '--output', required=True,
+                               help='<directory path> result directory')
+    plugin_parser.add_argument('-d', '--database', required=True,
+                               help='<file path> Database fasta (The database used to identify DSS)')
+    plugin_parser.add_argument('-t', '--tmp', default=None,
+                               help='<dir path> Temporary directory path <Default system temporary directory>')
+    plugin_parser.add_argument('-p', '--primer', action='store_true',
+                               help='Design Primer (Need primer3_core in your PATH)')
+    plugin_parser.add_argument('-r', '--rflp', action='store_true',
+                               )
+    plugin_parser.set_defaults(subcmd="plugin")
+
     args = parser.parse_args()
     return args
 
 
 def main():
     args = getArgs()
+    args.tmp = tempfile.mktemp(dir=args.tmp)
+    if not os.path.exists(args.output):
+        os.mkdir(args.output)
+
     if args.subcmd == "database":
-        db = Database(args.input_fasta, args.output_fasta, args.blast)
+        db = Database(args.input, args.output, args.blast)
         if args.circular:
             db.database_generate(args.length)
         else:
@@ -107,10 +94,13 @@ def main():
 
     elif args.subcmd == "iden":
         # set temporary directory
-        args.tmp = tempfile.mktemp(dir=args.tmp)
         iden_main(args)
+
+    elif args.subcmd == "plugin":
         if args.primer:
             primer_main(args)
+        if args.rflp:
+            search_rflp(args)
 
 
 if __name__ == '__main__':
