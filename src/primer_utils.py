@@ -84,21 +84,22 @@ def primer_main(args):
     _meta_fasta = SeqIO.to_dict(SeqIO.parse(args.database, 'fasta'))
     for _file in file_list:
         _meta_tb = pd.read_table(_file)
+        _prefix = '.'.join(os.path.split(_file)[1].split('.')[:-1])
         if sum(_meta_tb['seq'].isna()) == 1:
             continue
         _meta_tb[['start', 'end']] = _meta_tb.apply((lambda x: x['position'].split('-')), axis=1, result_type="expand")
         os.mkdir(args.tmp)
         pre_cfg(_meta_tb[['assembly', 'start', 'end']],
                 _meta_fasta,
-                os.path.join(args.tmp, _file + '.p3in'),
+                os.path.join(args.tmp, _prefix + '.p3in'),
                 args.circular)
         setting_file = os.path.abspath(os.path.join(__file__, '../../template/DSS_settings.txt'))
         os.system(' '.join(['primer3_core',
                             '--p3_settings_file=' + setting_file,
-                            '--output=' + os.path.join(args.tmp, _file + '.p3out'),
-                            os.path.join(args.tmp, _file + '.p3in')]
+                            '--output=' + os.path.join(args.tmp, _prefix + '.p3out'),
+                            os.path.join(args.tmp, _prefix + '.p3in')]
                            )
                   )
-        parse_output(os.path.join(args.tmp, _file + '.p3out'),
-                     os.path.join(args.output, _file + '_primer.txt'))
+        parse_output(os.path.join(args.tmp, _prefix + '.p3out'),
+                     os.path.join(args.output, _prefix + '_primer.txt'))
         del_dir(args.tmp)
