@@ -10,7 +10,7 @@
 import tempfile, os
 from probe_utils import iden_main
 from primer_utils import primer_main
-from plugins import Database, search_rflp
+from plugins import Database, search_rflp, combine
 import argparse
 
 
@@ -61,17 +61,21 @@ def getArgs():
     plugin_parser.add_argument('-c', '--circular',  action='store_true',
                                help='the sequences are circular or not')
     plugin_parser.add_argument('-i', '--input', required=True,
-                               help='<file_path>  A meta file. One DSS result file path per line ')
+                               help='<file_path>  A meta file. One DSS result file path per line (combined result is OK)')
     plugin_parser.add_argument('-o', '--output', required=True,
                                help='<directory path> result directory')
     plugin_parser.add_argument('-d', '--database', required=True,
                                help='<file path> Database fasta (The database used to identify DSS)')
     plugin_parser.add_argument('-t', '--tmp', default=None,
                                help='<dir path> Temporary directory path <Default system temporary directory>')
-    plugin_parser.add_argument('-p', '--primer', action='store_true',
+    plugin_parser.add_argument('--primer', action='store_true',
                                help='Design Primer (Need primer3_core in your PATH)')
-    plugin_parser.add_argument('-r', '--rflp', action='store_true',
-                               )
+    plugin_parser.add_argument('--rflp', action='store_true',
+                               help='Identify restriction enzyme sits on DSS for putative RFLP method')
+    plugin_parser.add_argument('--combine', action='store_true',
+                               help='Generate the corresponding combined DSS file')
+    plugin_parser.add_argument('--statistic', action='store_true',
+                               help='Count the DSS number')
     plugin_parser.set_defaults(subcmd="plugin")
 
     args = parser.parse_args()
@@ -101,6 +105,8 @@ def main():
             primer_main(args)
         if args.rflp:
             search_rflp(args)
+        if args.combine:
+            combine(args)
 
 
 if __name__ == '__main__':

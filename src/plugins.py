@@ -16,6 +16,7 @@ from Bio.Restriction import Restriction as Rst
 from Bio.Restriction.Restriction_Dictionary import rest_dict, typedict
 from functools import reduce
 from collections import defaultdict
+from Bio.SeqUtils import GC
 
 
 def get_seq(_seq, _start, _end, _flanking_length):
@@ -160,3 +161,38 @@ def search_rflp(args):
                 sep='\t',
                 index=False
             )
+
+
+def combine(args):
+    with open(args.input, 'r') as f_in:
+        file_list = f_in.read().strip().split('\n')
+    for _file in file_list:
+        _dss_tb = pd.read_table(_file)
+        if sum(_dss_tb['seq'].isna()) == 1:
+            continue
+        _prefix = '.'.join(os.path.split(_file)[1].split('.')[:-1])
+        _dss_tb[['start', 'end']] = _dss_tb.position.str.split('-', expand=True)
+        _dss_tb[['start', 'end']] = _dss_tb[['start', 'end']].astype(int)
+        _dss_tb.sort_values(by="start", inplace=True)
+        _combined_list = []
+        _seq = ''
+        _start_pos = None
+        _end_pos = None
+        pointer = -1
+        for _idx, _row in _dss_tb.iterrows():
+            if not _row['start'] == pointer + 1:
+                _combined_list.append({'seq': _seq, 'start': _start_pos, 'end': _end_pos, 'GC': GC(_seq)})
+                _seq = _row['seq']
+                _start_pos = _row['start']
+                pointer = _row['start']
+            else:
+                _end_pos = _row['end']
+                _seq += _row['seq'][-1]
+                pointer += 1
+        _combined_list = _combined_list[1:]
+        combined_res = pd.DataFrame(_combined_list)
+        combined_res['group'] = _dss_tb.iloc[0, 0]
+        combined_res['assembly'] = _dss_tb.iloc[0, 1]
+        combined_res['position'] = combined_res.apply(lambda x: str(x['start']) + '-' + str(x['end']), axis=1)
+        combined_res[['group', 'assembly', 'seq', 'position', 'GC']].\
+            to_csv(os.path.join(args.output, _prefix + '.txt'), sep='\t', index=False)
