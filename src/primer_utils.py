@@ -13,15 +13,7 @@ import os
 from Bio import SeqIO
 from collections import deque
 from probe_utils import del_dir
-
-
-def get_seq(_seq, _start, _end):
-    if _start <= 400:
-        return _seq.seq[len(_seq.seq)-401+_start:] + _seq.seq[0: _end+400]
-    elif _end >= len(_seq.seq)-400:
-        return _seq.seq[_start-401:] + _seq.seq[:400-(len(_seq.seq)-_end)]
-    else:
-        return _seq.seq[_start-401: _end+400]
+from plugins import get_seq
 
 
 def pre_cfg(_meta_tb, _meta_fasta, _outpath, _circular):
@@ -30,14 +22,12 @@ def pre_cfg(_meta_tb, _meta_fasta, _outpath, _circular):
         if not _circular:
             if int(_item['start']) < 400 or int(_item['end']) > len(_meta_fasta[_item['assembly']].seq)-400:
                 continue
-        else:
-            pass
         _sequence_id = "SEQUENCE_ID=" + \
                        str(_meta_fasta[_item['assembly']].id) + \
                        "_" + str(_item['start']) + \
                        "_" + str(_item['end'])
         _sequence_template = "SEQUENCE_TEMPLATE=" + str(
-            get_seq(_meta_fasta[_item['assembly']], int(_item['start']), int(_item['end']))
+            get_seq(_meta_fasta[_item['assembly']], int(_item['start']), int(_item['end']), 400)
         )
         _write_list.append(_sequence_id)
         _write_list.append(_sequence_template)
@@ -89,26 +79,27 @@ def parse_output(_p3out, _output):
 
 
 def primer_main(args):
-    _table = pd.read_table(args.meta, names=['group', 'sample', 'assembly'], dtype=str)
-    _groups = list(set(_table['group'].to_list()))
-    _meta_fasta = {_.id: _ for _ in SeqIO.parse(args.database, 'fasta')}
-    for _group in _groups:
-        _meta_tb = pd.read_table(os.path.join(args.output, _group + '.txt'))
-        _meta_tb[['start', 'end']] = _meta_tb.apply((lambda x: x['position'].split('-')), axis=1, result_type="expand")
+    with open(args.input) as _f_in:
+        file_list = _f_in.read().strip().split('\n')
+    _meta_fasta = SeqIO.to_dict(SeqIO.parse(args.database, 'fasta'))
+    for _file in file_list:
+        _meta_tb = pd.read_table(_file)
+        _prefix = '.'.join(os.path.split(_file)[1].split('.')[:-1])
         if sum(_meta_tb['seq'].isna()) == 1:
             continue
+        _meta_tb[['start', 'end']] = _meta_tb.apply((lambda x: x['position'].split('-')), axis=1, result_type="expand")
         os.mkdir(args.tmp)
         pre_cfg(_meta_tb[['assembly', 'start', 'end']],
                 _meta_fasta,
-                os.path.join(args.tmp, _group + '.p3in'),
+                os.path.join(args.tmp, _prefix + '.p3in'),
                 args.circular)
         setting_file = os.path.abspath(os.path.join(__file__, '../../template/DSS_settings.txt'))
         os.system(' '.join(['primer3_core',
                             '--p3_settings_file=' + setting_file,
-                            '--output=' + os.path.join(args.tmp, _group + '.p3out'),
-                            os.path.join(args.tmp, _group + '.p3in')]
+                            '--output=' + os.path.join(args.tmp, _prefix + '.p3out'),
+                            os.path.join(args.tmp, _prefix + '.p3in')]
                            )
                   )
-        parse_output(os.path.join(args.tmp, _group + '.p3out'),
-                     os.path.join(args.output, _group + '_primer.txt'))
+        parse_output(os.path.join(args.tmp, _prefix + '.p3out'),
+                     os.path.join(args.output, _prefix + '_primer.txt'))
         del_dir(args.tmp)
