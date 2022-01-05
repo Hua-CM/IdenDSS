@@ -84,9 +84,6 @@ def getArgs():
 
 def main():
     args = getArgs()
-    args.tmp = tempfile.mktemp(dir=args.tmp)
-    if not os.path.exists(args.output):
-        os.mkdir(args.output)
 
     if args.subcmd == "database":
         db = Database(args.input, args.output, args.blast)
@@ -96,17 +93,22 @@ def main():
             db.copy_file()
         db.database_blast()
 
-    elif args.subcmd == "iden":
-        # set temporary directory
-        iden_main(args)
+    else:
+        if not os.path.exists(args.output):
+            os.mkdir(args.output)
+            args.tmp = tempfile.mktemp(dir=args.tmp)
 
-    elif args.subcmd == "plugin":
-        if args.primer:
-            primer_main(args)
-        if args.rflp:
-            search_rflp(args)
-        if args.combine:
-            combine(args)
+        if args.subcmd == "iden":
+            # set temporary directory
+            iden_main(args)
+
+        elif args.subcmd == "plugin":
+            if args.primer:
+                primer_main(args)
+            if args.rflp:
+                search_rflp(args)
+            if args.combine:
+                combine(args)
 
 
 if __name__ == '__main__':
