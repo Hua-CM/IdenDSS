@@ -96,13 +96,14 @@ def main():
     else:
         if not os.path.exists(args.output):
             os.mkdir(args.output)
-            args.tmp = tempfile.mktemp(dir=args.tmp)
 
         if args.subcmd == "iden":
             # set temporary directory
+            args.tmp = tempfile.mktemp(dir=args.tmp)
             iden_main(args)
 
         elif args.subcmd == "plugin":
+            args.tmp = tempfile.mktemp(dir=args.tmp)
             if args.primer:
                 primer_main(args)
             if args.rflp:
