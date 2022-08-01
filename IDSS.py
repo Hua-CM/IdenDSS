@@ -96,7 +96,10 @@ def main():
     else:
         if not os.path.exists(args.output):
             os.mkdir(args.output)
+<<<<<<< HEAD:IDSS.py
             #args.tmp = tempfile.mktemp(dir=args.tmp)
+=======
+>>>>>>> a497291a2fda8e96191234fad08f9dd6028a6f6e:src/IDSS.py
 
         if args.subcmd == "iden":
             # set temporary directory
