@@ -22,5 +22,9 @@ The result file contain five colums
 
 For more help see example files and help option.
 
-
+## TEST
+~~~shell
+cd example
+./example.sh
+~~~
 

@@ -12,8 +12,8 @@ import pandas as pd
 import os
 from Bio import SeqIO
 from collections import deque
-from probe_utils import del_dir
-from plugins import get_seq
+from src.probe_utils import del_dir
+from src.plugins import get_seq
 
 
 def pre_cfg(_meta_tb, _meta_fasta, _outpath, _circular):

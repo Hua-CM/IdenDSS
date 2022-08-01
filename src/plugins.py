@@ -184,6 +184,7 @@ def combine(args):
                 _combined_list.append({'seq': _seq, 'start': _start_pos, 'end': _end_pos, 'GC': GC(_seq)})
                 _seq = _row['seq']
                 _start_pos = _row['start']
+                _end_pos = _row['end']
                 pointer = _row['start']
             else:
                 _end_pos = _row['end']
@@ -195,4 +196,4 @@ def combine(args):
         combined_res['assembly'] = _dss_tb.iloc[0, 1]
         combined_res['position'] = combined_res.apply(lambda x: str(x['start']) + '-' + str(x['end']), axis=1)
         combined_res[['group', 'assembly', 'seq', 'position', 'GC']].\
-            to_csv(os.path.join(args.output, _prefix + '.txt'), sep='\t', index=False)
+            to_csv(os.path.join(args.output, _prefix + '_combined.txt'), sep='\t', index=False)
