@@ -7,16 +7,20 @@
 
 # @E-mail: njbxhzy@hotmail.com
 
-
-import pandas as pd
-import os
-from Bio import SeqIO
+import subprocess
 from collections import deque
-from src.probe_utils import del_dir
-from src.plugins import get_seq
+from pathlib import Path
+
+from Bio import SeqIO
+import pandas as pd
+
+from .plugins import get_seq
 
 
 def pre_cfg(_meta_tb, _meta_fasta, _outpath, _circular):
+    """
+    Prepare Primer3 input file
+    """
     _write_list = []
     for _idx, _item in _meta_tb.iterrows():
         if not _circular:
@@ -35,15 +39,17 @@ def pre_cfg(_meta_tb, _meta_fasta, _outpath, _circular):
                            str(381 + int(_item['end']) - int(_item['start'])) +
                            ',400')
         _write_list.append('=')
-    with open(_outpath, 'w') as f2:
-        f2.write('=\n')
-        f2.write('\n'.join(_write_list))
-        f2.write("\n")
+        _outpath.write_text('=\n')
+        _outpath.write_text('\n'.join(_write_list))
+        _outpath.write_text("\n")
 
 
-def parse_output(_p3out, _output):
-    _a = open(_p3out, 'r')
-    _file = deque(_a.read().splitlines())
+def parse_output(_p3out, _output) -> None:
+    """
+    Parse Primer3 result to readable tabular text
+    : param  _p3out : Path : Primer3 result path
+    """
+    _file = deque(_p3out.read_text().strip().split('\n'))
     _module = []
     _record_list = []
     for _line in _file:
@@ -78,28 +84,32 @@ def parse_output(_p3out, _output):
     pd.DataFrame(_record_list).to_csv(_output, sep='\t', index=False)
 
 
-def primer_main(args):
-    with open(args.input) as _f_in:
-        file_list = _f_in.read().strip().split('\n')
-    _meta_fasta = SeqIO.to_dict(SeqIO.parse(args.database, 'fasta'))
+def primer_main(data_info, set_info):
+    """
+    The main interface for Primer design.
+    """
+    file_list = data_info.input.read_text().strip().split('\n')
+    _meta_fasta = SeqIO.to_dict(SeqIO.parse(data_info.database, 'fasta'))
     for _file in file_list:
         _meta_tb = pd.read_table(_file)
-        _prefix = '.'.join(os.path.split(_file)[1].split('.')[:-1])
+        _prefix = Path(_file).stem
         if sum(_meta_tb['seq'].isna()) == 1:
             continue
         _meta_tb[['start', 'end']] = _meta_tb.apply((lambda x: x['position'].split('-')), axis=1, result_type="expand")
-        os.mkdir(args.tmp)
+        set_info.tmp.initiate()
         pre_cfg(_meta_tb[['assembly', 'start', 'end']],
                 _meta_fasta,
-                os.path.join(args.tmp, _prefix + '.p3in'),
-                args.circular)
-        setting_file = os.path.abspath(os.path.join(__file__, '../../template/DSS_settings.txt'))
-        os.system(' '.join(['primer3_core',
-                            '--p3_settings_file=' + setting_file,
-                            '--output=' + os.path.join(args.tmp, _prefix + '.p3out'),
-                            os.path.join(args.tmp, _prefix + '.p3in')]
-                           )
-                  )
-        parse_output(os.path.join(args.tmp, _prefix + '.p3out'),
-                     os.path.join(args.output, _prefix + '_primer.txt'))
-        del_dir(args.tmp)
+                set_info.tmp/ (_prefix + '.p3in'),
+                data_info.circular)
+        
+        setting_file = (Path(__file__).parent / 'template' / 'DSS_settings.txt').resolve()
+        subprocess.run(
+            ['primer3_core',
+             '--p3_settings_file=' + setting_file,
+             '--output=' + (set_info.tmp / (_prefix + '.p3out')),
+             (set_info.tmp / _prefix + '.p3in')],
+             check=True
+        )
+        parse_output(set_info.tmp / (_prefix + '.p3out'),
+                     data_info.output / (_prefix + '_primer.txt'))
+        set_info.tmp.autoclean()
