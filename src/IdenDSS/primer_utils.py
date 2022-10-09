@@ -21,7 +21,7 @@ def pre_cfg(_meta_tb, _meta_fasta, _outpath, _circular):
     """
     Prepare Primer3 input file
     """
-    _write_list = []
+    _write_list = ['=']
     for _idx, _item in _meta_tb.iterrows():
         if not _circular:
             if int(_item['start']) < 400 or int(_item['end']) > len(_meta_fasta[_item['assembly']].seq)-400:
@@ -39,9 +39,7 @@ def pre_cfg(_meta_tb, _meta_fasta, _outpath, _circular):
                            str(381 + int(_item['end']) - int(_item['start'])) +
                            ',400')
         _write_list.append('=')
-        _outpath.write_text('=\n')
-        _outpath.write_text('\n'.join(_write_list))
-        _outpath.write_text("\n")
+        _outpath.write_text('\n'.join(_write_list) + "\n")
 
 
 def parse_output(_p3out, _output) -> None:
@@ -89,27 +87,30 @@ def primer_main(data_info, set_info):
     The main interface for Primer design.
     """
     file_list = data_info.input.read_text().strip().split('\n')
-    _meta_fasta = SeqIO.to_dict(SeqIO.parse(data_info.database, 'fasta'))
+    _meta_fasta = SeqIO.to_dict(SeqIO.parse(data_info.db, 'fasta'))
     for _file in file_list:
         _meta_tb = pd.read_table(_file)
         _prefix = Path(_file).stem
         if sum(_meta_tb['seq'].isna()) == 1:
             continue
+        set_info.logger.info(f'Start design {_prefix} primers')
         _meta_tb[['start', 'end']] = _meta_tb.apply((lambda x: x['position'].split('-')), axis=1, result_type="expand")
-        set_info.tmp.initiate()
+        set_info.initiate()
         pre_cfg(_meta_tb[['assembly', 'start', 'end']],
                 _meta_fasta,
                 set_info.tmp/ (_prefix + '.p3in'),
                 data_info.circular)
         
-        setting_file = (Path(__file__).parent / 'template' / 'DSS_settings.txt').resolve()
+        setting_file = str((Path(__file__).parent / 'template' / 'DSS_settings.txt').resolve())
         subprocess.run(
-            ['primer3_core',
+            [str(set_info.bin_dir / 'primer3_core'),
              '--p3_settings_file=' + setting_file,
-             '--output=' + (set_info.tmp / (_prefix + '.p3out')),
-             (set_info.tmp / _prefix + '.p3in')],
-             check=True
+             '--output=' + str(set_info.tmp / (_prefix + '.p3out')),
+             str(set_info.tmp / (_prefix + '.p3in'))],
+            capture_output=True,
+            check=True
         )
         parse_output(set_info.tmp / (_prefix + '.p3out'),
                      data_info.output / (_prefix + '_primer.txt'))
-        set_info.tmp.autoclean()
+        set_info.autoclean()
+        set_info.logger.info(f'Design {_prefix} primers. Done')

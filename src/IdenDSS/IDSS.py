@@ -39,10 +39,10 @@ def get_args():
                                       'be constructed)')
     database_parser.add_argument('--blast', type=Path, default=Path(''), dest='bin_dir',
                                  help='<Directory path> BLAST exec directory <If your BLAST software not in PATH>')                                  
-    database_parser.set_defaults(subcmd="index")
+    database_parser.set_defaults(subcmd='index')
 
     probe_parser = sub_parser.add_parser(
-        'iden', help='Identification DSS based on database')
+        'identify', help='Identification DSS based on database')
     probe_parser.add_argument('-m', '--meta', type=Path, required=True,
                               help='<File path> The meta file')
     probe_parser.add_argument('-d', '--database', type=Path, required=True,
@@ -61,7 +61,7 @@ def get_args():
                                     (Default system temporary directory)')
     probe_parser.add_argument('--blast', type=Path, default=Path(''), dest='bin_dir',
                               help='<Directory path> BLAST exec directory <If your BLAST software not in PATH>')
-    probe_parser.set_defaults(subcmd="iden")
+    probe_parser.set_defaults(subcmd='identify')
 
     plugin_parser = sub_parser.add_parser(
         'plugin', help='Some plugin for DSS results')
@@ -83,7 +83,9 @@ def get_args():
                                help='Generate the corresponding combined DSS file')
     plugin_parser.add_argument('--statistic', action='store_true',
                                help='Count the DSS number')
-    plugin_parser.set_defaults(subcmd="plugin")
+    plugin_parser.add_argument('--bin', type=Path, default=Path(''), dest='bin_dir',
+                               help='<Directory path> Primer3 exec directory <If your Primer3 software not in PATH>')
+    plugin_parser.set_defaults(subcmd='plugin')
 
     validate_parser = sub_parser.add_parser(
         'validate', help='Validate DSS using HTS file. MUST BE DSS, NOT COMBINED DSS')
@@ -105,7 +107,7 @@ def get_args():
     validate_parser.add_argument('--bin', type=Path, default=Path(''),
                                  help='<Directory path> KMC3 exec directory, containing kmc and kmc_dump \
                                        <If your KMC3 software not in PATH>')
-    validate_parser.set_defaults(subcmd="validate")
+    validate_parser.set_defaults(subcmd='validate')
 
     args = parser.parse_args()
     return args
@@ -121,7 +123,7 @@ def main():
     logger.setLevel(level=logging.INFO)
     logger.addHandler(logging.StreamHandler())
 
-    if args.subcmd == "index":
+    if args.subcmd == 'index':
         set_info = SettingInfo(
             bin_dir=args.bin_dir,
             logger=logger)
@@ -132,7 +134,7 @@ def main():
         index_db = IndexDb(data_info, set_info)
         index_db.index()
 
-    if args.subcmd == "iden":
+    if args.subcmd == 'identify':
         set_info = SettingInfo(tmp=args.tmp,
                                bin_dir=args.bin_dir,
                                threads=args.threads,
@@ -144,7 +146,7 @@ def main():
                              circular=args.circular)
         iden_main(data_info, set_info)
 
-    if args.subcmd == "plugin":
+    if args.subcmd == 'plugin':
         set_info = SettingInfo(tmp=args.tmp,
                                logger=logger)
         data_info = DataInfo(in_put=args.input,

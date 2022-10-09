@@ -33,7 +33,7 @@ def index_tab():
         [row1],
         [row2]
     ]
-    return sg.Tab('Index', layout=main_col, expand_x = True)
+    return sg.Tab('index', layout=main_col, expand_x = True)
 
 def iden_tab():
     """
@@ -54,7 +54,7 @@ def iden_tab():
         [row1],
         [row2]
     ]
-    return sg.Tab('Identify', layout=main_col, expand_x = True)
+    return sg.Tab('identify', layout=main_col, expand_x = True)
 
 def plugin_tab():
     """
@@ -78,7 +78,7 @@ def plugin_tab():
         [row2],
         [row3]
     ]
-    return sg.Tab('Plugin', layout=main_col, expand_x = True)
+    return sg.Tab('plugin', layout=main_col, expand_x = True)
 
 def make_window():
     """

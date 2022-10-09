@@ -1,12 +1,10 @@
 #!/bin/bash
 
-WDIR=`pwd`
+IdenDSS index \
+	-i example.fasta \
+	-o database/example_db.fasta \
+	-l 40
 
-echo ${FILE}
-python ${WDIR}/../IDSS.py database \
-	-i ${WDIR}/example.fasta \
-	-l 40 \
-	-o ${WDIR}/example.fasta_db.fasta
 python ${WDIR}/../IDSS.py iden \
 	-l 40 \
 	-m ${WDIR}/example_input.tsv \

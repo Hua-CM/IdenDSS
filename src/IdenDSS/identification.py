@@ -23,7 +23,7 @@ def probe_generate(_seq_obj, _length=20):
     Generate probes for DSS identification
     :param _seq_obj: a Bio.Seq object
     :param _length:
-    :return:
+    :return: assembly_dict : 
     """
     sequence = _seq_obj.seq + _seq_obj.seq[0:_length]
     _seq_obj.id = _seq_obj.id
@@ -179,17 +179,20 @@ def iden_main(data_info, set_info) -> None:
             to_dict(orient='records')
         sam2asm_dict = {_sample['sample']: _sample['assembly'] for _sample in _tmp_list}
         # BLAST
-        one_group = IdentifyOneGroup(data_info, set_info, _row['group'], sam2asm_dict, seq_dict)
-        one_group.convserved_kmer()
-        set_info.logger.info('Intraspeceis conserved k-mers, done.')
-        one_group.blast_cmd()
-        set_info.logger.info('Putative DSS identification, done')
-        _result_tb = one_group.blast_parse()
-        _result_tb['group'] = _group
-        _result_tb[['group', 'assembly', 'seq', 'position', 'GC']]. \
-            to_csv(data_info.output / (_group + '.txt'),
-                   sep='\t',
-                   index=False)
-        set_info.logger.info('Parse results, done')
-        set_info.autoclean()
+        try:
+            one_group = IdentifyOneGroup(data_info, set_info, _row['group'], sam2asm_dict, seq_dict)
+            one_group.convserved_kmer()
+            set_info.logger.info('Intraspeceis conserved k-mers, done.')
+            one_group.blast_cmd()
+            set_info.logger.info('Putative DSS identification, done')
+            _result_tb = one_group.blast_parse()
+            _result_tb['group'] = _group
+            _result_tb[['group', 'assembly', 'seq', 'position', 'GC']]. \
+                to_csv(data_info.output / (_group + '.txt'),
+                    sep='\t',
+                    index=False)
+            set_info.logger.info('Parse results, done')
+            set_info.autoclean()
+        except Exception as e:
+            set_info.logger.error(e)
     set_info.logger.info('All groups done!')

@@ -217,22 +217,29 @@ def combine_dss(data_info, set_info):
     file_lst = data_info.input.read_text().strip().split('\n')
     for _file in file_lst:
         try:
-            _dss_tb = pd.read_table(_file)
+            _dss_tb = pd.read_table(Path(_file))
             if sum(_dss_tb['seq'].isna()) == 1:
                 continue
             group_name = Path(_file).stem
             set_info.logger.info(f'Begin to combine {group_name} DSSs')
             _dss_tb[['start', 'end']] = _dss_tb.position.str.split('-', expand=True)
             _dss_tb[['start', 'end']] = _dss_tb[['start', 'end']].astype(int)
-            _dss_tb.sort_values(by="start", inplace=True)
+            _dss_tb.sort_values(by=["assembly", "start"], inplace=True)
             _combined_list = []
             _seq = ''
+            _asm = _dss_tb.iloc[0, 1]
             _start_pos = None
             _end_pos = None
             pointer = -1
             for _idx, _row in _dss_tb.iterrows():
-                if not _row['start'] == pointer + 1:
-                    _combined_list.append({'seq': _seq, 'start': _start_pos, 'end': _end_pos, 'GC': GC(_seq)})
+                if (_row['start'] != pointer + 1) or (_row['assembly'] != _asm):
+                    _combined_list.append({
+                        'assembly': _asm,
+                        'seq': _seq,
+                        'start': _start_pos,
+                        'end': _end_pos,
+                        'GC': GC(_seq)})
+                    _asm = _row['assembly']
                     _seq = _row['seq']
                     _start_pos = _row['start']
                     _end_pos = _row['end']
@@ -242,18 +249,17 @@ def combine_dss(data_info, set_info):
                     _seq += _row['seq'][-1]
                     pointer += 1
             # add the last one!
-            _combined_list.append({'seq': _seq, 'start': _start_pos, 'end': _end_pos, 'GC': GC(_seq)})
+            _combined_list.append({'assembly': _asm,'seq': _seq, 'start': _start_pos, 'end': _end_pos, 'GC': GC(_seq)})
             _combined_list = _combined_list[1:]
             combined_res = pd.DataFrame(_combined_list)
             combined_res['group'] = _dss_tb.iloc[0, 0]
-            combined_res['assembly'] = _dss_tb.iloc[0, 1]
             combined_res['position'] = combined_res.apply(lambda x: str(x['start']) + '-' + str(x['end']), axis=1)
             combined_res[['group', 'assembly', 'seq', 'position', 'GC']].\
                 to_csv(data_info.output / (group_name + '_combined.txt'), sep='\t', index=False)
             set_info.logger.info(f'Combining {group_name} DSSs done')
         except Exception as e:
             set_info.logger.error(e)
-    set_info.logger.info(f'Combining all groups DSSs done')
+    set_info.logger.info('Combining all groups DSSs done')
 
 
 def summary_dss(data_info, set_info):
@@ -275,4 +281,4 @@ def summary_dss(data_info, set_info):
         except Exception as e:
             set_info.logger.error(e)
     pd.DataFrame(tmp_num_lst).to_csv(data_info.output / 'summary.tsv', sep='\t', index=False)
-    set_info.logger.info(f'Summary all groups results done')
+    set_info.logger.info('Summary all groups results done')

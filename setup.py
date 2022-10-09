@@ -11,7 +11,7 @@ import setuptools
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
-__version__ = "0.2.1"
+__version__ = "0.2.3"
 
 setuptools.setup(
     name="IdenDSS",
@@ -31,8 +31,9 @@ setuptools.setup(
         "biopython>=1.78",
         "pandas>=1.0.0",
         "numpy>=1.20.0"],
+    include_package_data=True,
     entry_points={'console_scripts': ['IdenDSS = IdenDSS.IDSS:main']},
-    package_dir={"": "src"},
+    package_dir={'': "src"},
     packages=setuptools.find_packages(where="src"),
     python_requires=">=3.8",
 )

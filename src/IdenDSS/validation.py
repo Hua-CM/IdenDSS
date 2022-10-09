@@ -8,11 +8,8 @@
 
 from pathlib import Path
 from typing import Optional, List
-import logging
 import subprocess
 import tempfile
-
-logger  = logging.getLogger(__name__)
 
 """
 In my experience, the KMC indexing a 500 Mbp FASTQ file need ~5 GB memory and ~0.5 min, and
@@ -113,18 +110,22 @@ class ValiDSS:
         """
         self.run_tmp.mkdir()
         # background dataset
+        self.setinfo.logger.info('Validate DSS in background dataset.')
         prefix_bg = self._gen_bg()
         # intraspecies dataset
+        self.setinfo.logger.info('Validate DSS in intraspecies dataset.')
         prefix_sp = self._gen_sp()
         # DSS dataset
         prefix_dss = self._gen_dss()
         # intersect
+        self.setinfo.logger.info('Get intersection results.')
         prefix_bg_dss = self._run_intersect_kmc(prefix_dss, prefix_bg)
         prefix_sp_dss = self._run_intersect_kmc(prefix_dss, prefix_sp)
         # get result
         pdss_bg = self._run_get_seq_kmc(prefix_bg_dss)
         pdss_sp = self._run_get_seq_kmc(prefix_sp_dss)
         self.run_tmp.rmdir()
+        self.setinfo.logger.info('Confirm results. Done')
         return pdss_sp - pdss_bg
 
 
@@ -144,13 +145,18 @@ def v_main(datainfo, setinfo):
     : NOTE : The DSS need generate from the input file !!!
     """
     setinfo.initiate()
-    lines = datainfo.input.read_text().strip().split('\n')
-    datainfo.length = len(lines[1].split('\t')[2])
-    dss_valiation = ValiDSS(setinfo, datainfo)
-    dss_set = dss_valiation.validate()
-    out_lines = [lines[0]]
-    for line in lines[1:]:
-        if line.split('\t')[2] in dss_set:
-            out_lines.append(line)
-    datainfo.output.write_text('\n'.join(out_lines) + '\n')
-    setinfo.autoclean()
+    try:
+        lines = datainfo.input.read_text().strip().split('\n')
+        datainfo.length = len(lines[1].split('\t')[2])
+        dss_valiation = ValiDSS(setinfo, datainfo)
+        dss_set = dss_valiation.validate()
+        out_lines = [lines[0]]
+        for line in lines[1:]:
+            if line.split('\t')[2] in dss_set:
+                out_lines.append(line)
+        datainfo.output.write_text('\n'.join(out_lines) + '\n')
+    except Exception as e:
+        setinfo.logger.error(e)
+    finally:
+        # remove the tmp directory
+        setinfo.autoclean()
