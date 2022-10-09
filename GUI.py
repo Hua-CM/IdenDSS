@@ -125,7 +125,7 @@ def main():
         if event in (sg.WINDOW_CLOSED, 'Exit'):
             break
         if event == 'run':
-            if values['-TASK-'] == 'Index':
+            if values['-TASK-'] == 'index':
                 set_info = SettingInfo(
                     bin_dir=Path(values['-INDEX BIN_DIR-']),
                     logger=logger)
@@ -137,7 +137,7 @@ def main():
                 )
                 index_db = IndexDb(data_info, set_info)
                 index_db.index()
-            elif values['-TASK-'] == 'Identify':
+            elif values['-TASK-'] == 'identify':
                 set_info = SettingInfo(
                     tmp=Path(values['-IDEN TMP_DIR-']),
                     bin_dir=Path(values['-IDEN BIN_DIR-']),
@@ -152,10 +152,11 @@ def main():
                     circular=values['-CIRCULAR-']
                 )
                 iden_main(data_info, set_info)
-            elif values['-TASK-'] == 'Plugin':
+            elif values['-TASK-'] == 'plugin':        
                 set_info = SettingInfo(
                     tmp=Path(values['-PLUG TMP_DIR-']),
                     logger=logger)
+                set_info.clean_file(Path(values['-PLUG INPUT-']))
                 data_info = DataInfo(
                     in_put=Path(values['-PLUG INPUT-']),
                     output=Path(values['-PLUG OUTPUT-']),

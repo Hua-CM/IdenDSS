@@ -122,6 +122,15 @@ class SettingInfo:
         """
         shutil.rmtree(self.tmp)
 
+    @staticmethod
+    def clean_file(file: Path) -> None:
+        """
+        Remove some invisible character for windows (e.g. \\u202A)
+        """
+        lines = []
+        for line in file.read_bytes().decode('utf-8').strip().split('\n'):
+            lines.append(line.strip('\u202a\r'))
+        file.write_text('\n'.join(lines) + '\n')
 
 class DataInfo:
     """
