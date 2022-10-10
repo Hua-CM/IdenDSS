@@ -10,6 +10,7 @@ import argparse
 import logging
 from pathlib import Path
 from tempfile import gettempdir
+from sys import platform
 
 from .identification import iden_main
 from .primer_utils import primer_main
@@ -149,6 +150,8 @@ def main():
     if args.subcmd == 'plugin':
         set_info = SettingInfo(tmp=args.tmp,
                                logger=logger)
+        if platform == 'win32':
+            set_info.clean_file(args.input)
         data_info = DataInfo(in_put=args.input,
                              output=args.output,
                              db=args.database,
