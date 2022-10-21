@@ -98,8 +98,6 @@ def get_args():
     validate_parser.add_argument('--bg', required=True, type=str, dest='bg',
                                  help='<File path> The  background species HTS \
                                  FASTQ file (could be a list, seperate by comma)')
-    validate_parser.add_argument('--min', type=int, default=2,
-                                 help='<Int> The minium k-mer occurance')
     validate_parser.add_argument('-o', '--output', type=Path, required=True,
                                  help='<File path> validated DSS result path')
     validate_parser.add_argument('-t', '--tmp', type=Path, default=Path(gettempdir()),

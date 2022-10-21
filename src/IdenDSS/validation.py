@@ -95,12 +95,13 @@ class ValiDSS:
 
     def _run_get_seq_kmc(self, _prefix:str) -> set:
         out_set = set()
-        proc = subprocess.run(
-            [str(self.setinfo.kmcdump), str(self.setinfo.tmp / _prefix), str(self.setinfo.stdout)],
-            stdout=subprocess.PIPE,
+        subprocess.run(
+            [str(self.setinfo.kmcdump),
+             str(self.setinfo.tmp / _prefix),
+             str(self.setinfo.tmp / (_prefix + '_tmp'))],
             check=True
         )
-        for line in proc.stdout.strip().split(b'\n'):
+        for line in (self.setinfo.tmp / (_prefix + '_tmp')).read_bytes().strip().split(b'\n'):
             out_set.add(line.split(b'\t')[0].decode("utf-8") )
         return out_set
 
@@ -135,8 +136,8 @@ def v_main(datainfo, setinfo):
     : param datainfo :
         : input  : Path       : The input DSS result path.
         : output : Path       : The output validated DSS result path.
-        : db     : List[Path] : The intraspecies HTS FASTQ file.
-        : db2    : List[Path] : The background species HTS FASTQ file.
+        : db     : List[Path] : The background HTS FASTQ file.
+        : db2    : List[Path] : The intraspecies species HTS FASTQ file.
     : param setinfo  :
         : tmp     : The temporary directory path.
         : kmc     : The kmc bin path.

@@ -12,9 +12,8 @@ import PySimpleGUI as sg
 
 from IdenDSS.identification import iden_main
 from IdenDSS.plugins import IndexDb, search_rflp, combine_dss, summary_dss
+from IdenDSS.validation import v_main
 from IdenDSS.utils import enzymes_list, SettingInfo, DataInfo
-
-#GUI_SETTINGS = sg.UserSettings(filename=str(Path(__file__).parent / 'template' / 'GUI.settings.json'))
 
 
 def index_tab():
@@ -22,9 +21,9 @@ def index_tab():
     The tab for indexing database
     """
     row1 = sg.Frame('Data setting', [
-        [sg.T('Input path:',  size=15), sg.I(key='-INDEX INPUT-', size=30), sg.FileBrowse(target='-INDEX INPUT-')],
-        [sg.T('Output path:', size=15), sg.I(key='-INDEX OUTPUT-', size=30), sg.FolderBrowse(target='-INDEX OUTPUT-')],
-        [sg.T('DSS length:', size=15), sg.I('40', key='-INDEX LENGTH-')]
+        [sg.T('Input path:',  size=15), sg.I(key='-INDEX INPUT-', size=45), sg.FileBrowse(target='-INDEX INPUT-')],
+        [sg.T('Output path:', size=15), sg.I(key='-INDEX OUTPUT-', size=45), sg.FolderBrowse(target='-INDEX OUTPUT-')],
+        [sg.T('DSS length:', size=15), sg.I('40', key='-INDEX LENGTH-', size=5)]
     ])
     row2 = sg.Frame('Global setting', [
         [sg.T('Bin directory path (Optional):', size=30), sg.I(key='-INDEX BIN_DIR-'), sg.FolderBrowse(target='-INDEX BIN_DIR-')]
@@ -35,15 +34,16 @@ def index_tab():
     ]
     return sg.Tab('index', layout=main_col, expand_x = True)
 
+
 def iden_tab():
     """
     The tab for identifying DSS
     """
     row1 = sg.Frame('Data setting', [
-        [sg.T('Input path:',  size=15), sg.I(key='-IDEN INPUT-', size=30), sg.FileBrowse(target='-IDEN INPUT-')],
-        [sg.T('Output path:', size=15), sg.I(key='-IDEN OUTPUT-', size=30), sg.FolderBrowse(target='-IDEN OUTPUT-')],
-        [sg.T('Database path:', size=15), sg.I(key='-IDEN DATABASE-', size=30), sg.FileBrowse(target='-IDEN DATABASE-')],
-        [sg.T('DSS length:', size=15), sg.I('40', key='-IDEN LENGTH-')]
+        [sg.T('Input path:',  size=15), sg.I(key='-IDEN INPUT-', size=45), sg.FileBrowse(target='-IDEN INPUT-')],
+        [sg.T('Output path:', size=15), sg.I(key='-IDEN OUTPUT-', size=45), sg.FolderBrowse(target='-IDEN OUTPUT-')],
+        [sg.T('Database path:', size=15), sg.I(key='-IDEN DATABASE-', size=45), sg.FileBrowse(target='-IDEN DATABASE-')],
+        [sg.T('DSS length:', size=15), sg.I('40', key='-IDEN LENGTH-', size=5)]
     ])
     row2 = sg.Frame('Global setting', [
         [sg.T('Temporary directory path (Optional):', size=30), sg.I(key='-IDEN TMP_DIR-'), sg.FolderBrowse(target='-IDEN TMP_DIR-')],
@@ -56,6 +56,7 @@ def iden_tab():
     ]
     return sg.Tab('identify', layout=main_col, expand_x = True)
 
+
 def plugin_tab():
     """
     The tab for plugin
@@ -66,9 +67,9 @@ def plugin_tab():
          sg.Checkbox('Statistic', k='-STATISTIC-')]
     ])
     row2 = sg.Frame('Data setting', [
-        [sg.T('Input path:',  size=15), sg.I(key='-PLUG INPUT-', size=30), sg.FileBrowse(target='-PLUG INPUT-')],
-        [sg.T('Output path:', size=15), sg.I(key='-PLUG OUTPUT-', size=30), sg.FolderBrowse(target='-PLUG OUTPUT-')],
-        [sg.T('Database path:', size=15), sg.I(key='-PLUG DATABASE-', size=30), sg.FileBrowse(target='-PLUG DATABASE-')]
+        [sg.T('Input path:',  size=15), sg.I(key='-PLUG INPUT-', size=45), sg.FileBrowse(target='-PLUG INPUT-')],
+        [sg.T('Output path:', size=15), sg.I(key='-PLUG OUTPUT-', size=45), sg.FolderBrowse(target='-PLUG OUTPUT-')],
+        [sg.T('Database path:', size=15), sg.I(key='-PLUG DATABASE-', size=45), sg.FileBrowse(target='-PLUG DATABASE-')]
     ])
     row3 = sg.Frame('Global setting', [
         [sg.T('Temporary directory path (Optional):', size=30), sg.I(key='-PLUG TMP_DIR-'), sg.FolderBrowse(target='-PLUG TMP_DIR-')]
@@ -80,18 +81,50 @@ def plugin_tab():
     ]
     return sg.Tab('plugin', layout=main_col, expand_x = True)
 
+
+def validate_tab():
+    """
+    The tab for validation
+    """
+    row1 = sg.Frame('Data setting', [
+        [sg.T('Input path:',  size=18),
+         sg.I(key='-VALI INPUT-', size=42),
+         sg.FileBrowse(target='-VALI INPUT-')],
+        [sg.T('Species fastq path:', size=18),
+         sg.ML(key='-VALI SP-', size=(40,2)),
+         sg.I(visible=False, key='-VALI SP MULTIIN-', enable_events=True),
+         sg.FilesBrowse(target='-VALI SP MULTIIN-', file_types=(('fastq', '.fastq .fq'),))],
+        [sg.T('Background fastq path:', size=18),
+         sg.ML(key='-VALI BG-', size=(40,2)),
+         sg.I(visible=False, key='-VALI BG MULTIIN-', enable_events=True),
+         sg.FilesBrowse(target='-VALI BG MULTIIN-', file_types=(('fastq', '.fastq .fq'),))],
+        [sg.T('Output path:', size=18),
+         sg.I(key='-VALI OUTPUT-', size=42),
+         sg.FolderBrowse(target='-VALI OUTPUT-')],
+        [sg.T('min occurance:', size=18), sg.I('2', key='-VALI MIN-', size=5)]
+    ])
+    row2 = sg.Frame('Global setting', [
+        [sg.T('Temporary directory path (Optional):', size=30), sg.I(key='-VALI TMP_DIR-'), sg.FolderBrowse(target='-VALI TMP_DIR-')],
+        [sg.T('Bin directory path (Optional):', size=30), sg.I(key='-VALI BIN_DIR-'), sg.FolderBrowse(target='-VALI BIN_DIR-')]
+    ])
+    main_col = [
+        [row1],
+        [row2]
+    ]
+    return sg.Tab('validate', layout=main_col, expand_x = True)
+
 def make_window():
     """
     Make the main window
     """
-
     sg.theme('SystemDefaultForReal')
     tab1 = index_tab()
     tab2 = iden_tab()
     tab3 = plugin_tab()
+    tab4 = validate_tab()
 
     layout = [
-        [sg.TabGroup([[tab1, tab2, tab3]], key='-TASK-')],
+        [sg.TabGroup([[tab1, tab2, tab3, tab4]], key='-TASK-')],
         [sg.CB('This is a circular DNA sequence Database', k='-CIRCULAR-')],
         [sg.ML('',
                size=(60,5),
@@ -106,7 +139,7 @@ def make_window():
                autoscroll=True)],
         [sg.Button('Run', key='run'), sg.Exit()]
         ]
-    window = sg.Window('IdenDSS', layout, default_element_size=(15,1))
+    window = sg.Window('IdenDSS', layout, default_element_size=(30,1))
     return window
 
 
@@ -118,12 +151,16 @@ def main():
     logger = logging.getLogger('IdenDSS')
     logger.setLevel(level=logging.INFO)
     # Setting a special Handler for Logger to work with PySimpleGUI is necessary
-    viewHandler = logging.StreamHandler()
-    logger.addHandler(viewHandler)
+    view_handler = logging.StreamHandler()
+    logger.addHandler(view_handler)
     while True:
         event, values = window.read()
         if event in (sg.WINDOW_CLOSED, 'Exit'):
             break
+        if event.endswith('MULTIIN-'):
+            # for multiline box input. use "-* MULTIIN-" for invisible input box.
+            multi_key = ' '.join(event.split(' ')[:-1]) + '-'
+            window[multi_key].Update('\n'.join(values[event].split(';')) + '\n', append=True)
         if event == 'run':
             if values['-TASK-'] == 'index':
                 set_info = SettingInfo(
@@ -152,7 +189,7 @@ def main():
                     circular=values['-CIRCULAR-']
                 )
                 iden_main(data_info, set_info)
-            elif values['-TASK-'] == 'plugin':        
+            elif values['-TASK-'] == 'plugin':
                 set_info = SettingInfo(
                     tmp=Path(values['-PLUG TMP_DIR-']),
                     logger=logger)
@@ -168,7 +205,16 @@ def main():
                     combine_dss(data_info, set_info)
                 if values['-STATISTIC-']:
                     summary_dss(data_info, set_info)
-
+            elif values['-TASK-'] == 'validate':
+                set_info = SettingInfo(
+                    tmp=Path(values['-VALI TMP_DIR-']),
+                    bin_dir=Path(values['-VALI BIN_DIR-']),
+                    logger=logger)
+                data_info = DataInfo(in_put=Path(values['-VALI INPUT-']),
+                             output=Path(values['-VALI OUTPUT-']),
+                             db=[Path(_) for _ in values['-VALI BG-'].split('\n')],
+                             db2=[Path(_) for _ in values['-VALI SP-'].split('\n')])
+                v_main(data_info, set_info)
     window.close()
 
 if __name__ == '__main__':
