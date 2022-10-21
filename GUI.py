@@ -100,8 +100,7 @@ def validate_tab():
          sg.FilesBrowse(target='-VALI BG MULTIIN-', file_types=(('fastq', '.fastq .fq'),))],
         [sg.T('Output path:', size=18),
          sg.I(key='-VALI OUTPUT-', size=42),
-         sg.FolderBrowse(target='-VALI OUTPUT-')],
-        [sg.T('min occurance:', size=18), sg.I('2', key='-VALI MIN-', size=5)]
+         sg.FolderBrowse(target='-VALI OUTPUT-')]
     ])
     row2 = sg.Frame('Global setting', [
         [sg.T('Temporary directory path (Optional):', size=30), sg.I(key='-VALI TMP_DIR-'), sg.FolderBrowse(target='-VALI TMP_DIR-')],
