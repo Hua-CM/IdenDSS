@@ -14,7 +14,7 @@ from sys import platform
 
 from .identification import iden_main
 from .primer_utils import primer_main
-from .plugins import IndexDb, search_rflp, combine_dss, summary_dss
+from .plugins import IndexDb, search_rflp, combine_dss, summary_dss, flanking, convert, resample
 from .utils import enzymes_list, SettingInfo, DataInfo
 from .validation import v_main
 
@@ -67,7 +67,8 @@ def get_args():
     plugin_parser = sub_parser.add_parser(
         'plugin', help='Some plugin for DSS results')
     plugin_parser.add_argument('-i', '--input', type=Path, required=True,
-                               help='<File path>  A meta file. One DSS result file path per line (combined result is OK)')
+                               help='<File path>  A meta file. One DSS result file path per line. \
+                                     Some plugins may need an extra column.')
     plugin_parser.add_argument('-d', '--database', type=Path, required=True,
                                help='<File path> Database fasta (The database used to identify DSS)')
     plugin_parser.add_argument('-c', '--circular', action='store_true',
@@ -79,11 +80,19 @@ def get_args():
     plugin_parser.add_argument('--primer', action='store_true',
                                help='Design Primer (Need primer3_core in your PATH)')
     plugin_parser.add_argument('--rflp', action='store_true',
-                               help='Identify restriction enzyme sits on DSS for putative RFLP method')
+                               help='Identify restriction enzyme sits on DSS for putative RFLP method  (combined result is OK)')
     plugin_parser.add_argument('--combine', action='store_true',
                                help='Generate the corresponding combined DSS file')
     plugin_parser.add_argument('--statistic', action='store_true',
                                help='Count the DSS number')
+    plugin_parser.add_argument('--flank', type=int, default=0,
+                               help='Generate the flanking sequence for each. e.g., --flank 200')
+    plugin_parser.add_argument('--convert', action='store_true',
+                               help='Convert the DSS to the another reference assembly \
+                                     (Need a scenond column with the new reference name in meta file).')
+    plugin_parser.add_argument('--sample', type=int, default=0,
+                                help='Sample N records from raw result file. This plugin give priority to \
+                                      sample DSS from different combined DSS.')
     plugin_parser.add_argument('--bin', type=Path, default=Path(''), dest='bin_dir',
                                help='<Directory path> Primer3 exec directory <If your Primer3 software not in PATH>')
     plugin_parser.set_defaults(subcmd='plugin')
@@ -162,6 +171,14 @@ def main():
             combine_dss(data_info, set_info)
         if args.statistic:
             summary_dss(data_info, set_info)
+        if args.flank:
+            data_info.length = args.flank
+            flanking(data_info, set_info)
+        if args.convert:
+            convert(data_info, set_info)
+        if args.sample:
+            data_info.length = args.sample
+            resample(data_info, set_info)
 
     if args.subcmd == 'validate':
         set_info = SettingInfo(tmp=args.tmp,

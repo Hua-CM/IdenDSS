@@ -14,7 +14,7 @@ from pathlib import Path
 from Bio import SeqIO
 import pandas as pd
 
-from .plugins import get_seq
+from .plugins import get_flanking
 
 
 def pre_cfg(_meta_tb, _meta_fasta, _outpath, _circular):
@@ -31,7 +31,7 @@ def pre_cfg(_meta_tb, _meta_fasta, _outpath, _circular):
                        "_" + str(_item['start']) + \
                        "_" + str(_item['end'])
         _sequence_template = "SEQUENCE_TEMPLATE=" + str(
-            get_seq(_meta_fasta[_item['assembly']], int(_item['start']), int(_item['end']), 400)
+            get_flanking(_meta_fasta[_item['assembly']], int(_item['start']), int(_item['end']), 400)
         )
         _write_list.append(_sequence_id)
         _write_list.append(_sequence_template)

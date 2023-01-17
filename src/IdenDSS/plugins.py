@@ -6,14 +6,17 @@
 # @Note:
 # @E-mail: njbxhzy@hotmail.com
 
+import re
 from functools import reduce
 from collections import defaultdict
 from typing import List
 from pathlib import Path
+from random import sample
 
 import numpy as np
 import pandas as pd
 from Bio import SeqIO
+from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio.Blast.Applications import NcbimakeblastdbCommandline
 from Bio.Restriction import Restriction as Rst
@@ -21,15 +24,23 @@ from Bio.Restriction.Restriction_Dictionary import rest_dict, typedict
 from Bio.SeqUtils import GC
 
 
-def get_seq(_seq, _start, _end, _flanking_length):
+def get_flanking(_seq, _start, _end, _flanking_length):
     """
-    Get fragment from thw whole sequences. 1-based index.
+    Get DSS with flanking sequence from thw whole sequences. 1-based index.
     """
     if _start <= _flanking_length:
         return _seq.seq[len(_seq.seq)-_flanking_length-1+_start:] + _seq.seq[0: _end+_flanking_length]
     if _end >= len(_seq.seq)-_flanking_length:
         return _seq.seq[_start-_flanking_length-1:] + _seq.seq[:_flanking_length-(len(_seq.seq)-_end)]
     return _seq.seq[_start-_flanking_length-1: _end+_flanking_length]
+
+
+def get_seq(_seq, _start, _end):
+    """
+    Get sequence from thw whole sequences. 1-based index.
+    """
+    return _seq.seq[_start-1: _end]
+
 
 
 class IndexDb:
@@ -191,7 +202,7 @@ def search_rflp(data_info, set_info, enzymes_list):
                     if int(_item['start']) < 250 or int(_item['end']) > len(_meta_fasta[_item['assembly']].seq) - 250:
                         continue
                 in_list.append(
-                    SeqRecord(seq=get_seq(_meta_fasta[_item['assembly']], int(_item['start']), int(_item['end']), 250),
+                    SeqRecord(seq=get_flanking(_meta_fasta[_item['assembly']], int(_item['start']), int(_item['end']), 250),
                             id=_item['assembly']+'-'+_item['start']+'-'+_item['end'])
                 )
             rflp_ins = RFLP(in_list, 251, 290, enzymes_list)
@@ -210,6 +221,46 @@ def search_rflp(data_info, set_info, enzymes_list):
             set_info.logger.error(e)
     set_info.logger.info(f'All RFLP sites searches done')
 
+def _combine_per_dss(_dss_tb):
+    """Generate combined DSS from one DSS result file
+    Args:
+        _dss_tb (pd.DataFrame): The input result dataframe
+    """
+    _dss_tb[['start', 'end']] = _dss_tb.position.str.split('-', expand=True)
+    _dss_tb[['start', 'end']] = _dss_tb[['start', 'end']].astype(int)
+    _dss_tb.sort_values(by=["assembly", "start"], inplace=True)
+    _combined_list = []
+    _seq = ''
+    _asm = _dss_tb.iloc[0, 1]
+    _start_pos = None
+    _end_pos = None
+    pointer = -1
+    for _idx, _row in _dss_tb.iterrows():
+        if (_row['start'] != pointer + 1) or (_row['assembly'] != _asm):
+            _combined_list.append({
+                'assembly': _asm,
+                'seq': _seq,
+                'start': _start_pos,
+                'end': _end_pos,
+                'GC': GC(_seq)})
+            _asm = _row['assembly']
+            _seq = _row['seq']
+            _start_pos = _row['start']
+            _end_pos = _row['end']
+            pointer = _row['start']
+        else:
+            _end_pos = _row['end']
+            _seq += _row['seq'][-1]
+            pointer += 1
+    # add the last one!
+    _combined_list.append({'assembly': _asm,'seq': _seq, 'start': _start_pos, 'end': _end_pos, 'GC': GC(_seq)})
+    _combined_list = _combined_list[1:]
+    combined_res = pd.DataFrame(_combined_list)
+    combined_res['group'] = _dss_tb.iloc[0, 0]
+    combined_res['position'] = combined_res.apply(lambda x: str(x['start']) + '-' + str(x['end']), axis=1)
+    return combined_res[['group', 'assembly', 'seq', 'position', 'GC']]
+
+    
 def combine_dss(data_info, set_info):
     """
     Generate combined DSS from DSS results
@@ -222,40 +273,8 @@ def combine_dss(data_info, set_info):
                 continue
             group_name = Path(_file).stem
             set_info.logger.info(f'Begin to combine {group_name} DSSs')
-            _dss_tb[['start', 'end']] = _dss_tb.position.str.split('-', expand=True)
-            _dss_tb[['start', 'end']] = _dss_tb[['start', 'end']].astype(int)
-            _dss_tb.sort_values(by=["assembly", "start"], inplace=True)
-            _combined_list = []
-            _seq = ''
-            _asm = _dss_tb.iloc[0, 1]
-            _start_pos = None
-            _end_pos = None
-            pointer = -1
-            for _idx, _row in _dss_tb.iterrows():
-                if (_row['start'] != pointer + 1) or (_row['assembly'] != _asm):
-                    _combined_list.append({
-                        'assembly': _asm,
-                        'seq': _seq,
-                        'start': _start_pos,
-                        'end': _end_pos,
-                        'GC': GC(_seq)})
-                    _asm = _row['assembly']
-                    _seq = _row['seq']
-                    _start_pos = _row['start']
-                    _end_pos = _row['end']
-                    pointer = _row['start']
-                else:
-                    _end_pos = _row['end']
-                    _seq += _row['seq'][-1]
-                    pointer += 1
-            # add the last one!
-            _combined_list.append({'assembly': _asm,'seq': _seq, 'start': _start_pos, 'end': _end_pos, 'GC': GC(_seq)})
-            _combined_list = _combined_list[1:]
-            combined_res = pd.DataFrame(_combined_list)
-            combined_res['group'] = _dss_tb.iloc[0, 0]
-            combined_res['position'] = combined_res.apply(lambda x: str(x['start']) + '-' + str(x['end']), axis=1)
-            combined_res[['group', 'assembly', 'seq', 'position', 'GC']].\
-                to_csv(data_info.output / (group_name + '_combined.txt'), sep='\t', index=False)
+            _combined_dss_tb = _combine_per_dss(_dss_tb)
+            _combined_dss_tb.to_csv(data_info.output / (group_name + '_combined.txt'), sep='\t', index=False)
             set_info.logger.info(f'Combining {group_name} DSSs done')
         except Exception as e:
             set_info.logger.error(e)
@@ -282,3 +301,147 @@ def summary_dss(data_info, set_info):
             set_info.logger.error(e)
     pd.DataFrame(tmp_num_lst).to_csv(data_info.output / 'summary.tsv', sep='\t', index=False)
     set_info.logger.info('Summary all groups results done')
+
+
+def flanking(data_info, set_info):
+    """Generate flanking sequence, but not design primer.
+    """
+    _meta_fasta = SeqIO.to_dict(SeqIO.parse(data_info.db, 'fasta'))
+    file_lst = data_info.input.read_text().strip().split('\n')
+    f_len = data_info.length
+    for _file in file_lst:
+        try:
+            group_name = Path(_file).stem
+            set_info.logger.info(f'Begin to generate {group_name} flanking sequences')
+            _dss_tb = pd.read_table(_file)
+            if sum(_dss_tb['seq'].isna()) == 1:
+                continue
+            _dss_tb[['start', 'end']] = _dss_tb.apply((lambda x: x['position'].split('-')), axis=1, result_type="expand")
+            in_list = []
+            for _idx, _item in _dss_tb.iterrows():
+                _ref_asm = _meta_fasta[_item['assembly']]
+                _start = int(_item['start']) - 1
+                _end = int(_item['end']) + 1
+                if not data_info.circular:
+                    if _start < f_len or _end > len(_ref_asm) - f_len:
+                        continue
+                if _start <= f_len:
+                    left_flanking = get_seq(_ref_asm, len(_ref_asm) - f_len - 1, len(_ref_asm)) + get_seq(_ref_asm, 1, _start)
+                    right_flanking = get_seq(_ref_asm, _end, _end + f_len)
+                if _end >= len(_ref_asm)- f_len:
+                    left_flanking = get_seq(_ref_asm, _start - f_len, _start)
+                    right_flanking = get_seq(_ref_asm, _end, len(_ref_asm)) + get_seq(_ref_asm,1, f_len-(len(_ref_asm)-_end))
+                else:
+                    left_flanking = get_seq(_ref_asm, _start - f_len, _start)
+                    right_flanking = get_seq(_ref_asm, _end, _end + f_len)
+                in_list.append({'left_flanking' : left_flanking,
+                                'right_flanking': right_flanking,
+                                'start'         : _item['start'],
+                                'end'           : _item['end']})
+            _tmp_df = pd.DataFrame(in_list)
+            _tmp_df = _tmp_df.merge(_dss_tb, how='left')
+            _tmp_df[['group', 'assembly', 'seq', 'left_flanking', 'right_flanking', 'position', 'GC']].\
+            to_csv(
+                data_info.output/ (group_name + '_flanking.txt'),
+                sep='\t',
+                index=False
+            )
+            set_info.logger.info(f'{group_name} flanking sequence extract done')
+        except Exception as e:
+            set_info.logger.error(e)
+
+
+def convert(data_info, set_info):
+    """Convert DSS on old reference to the new reference
+    Note: Notice the DSS across the gap in circular sequence
+    """
+    _meta_fasta = SeqIO.to_dict(SeqIO.parse(data_info.db, 'fasta'))
+    line_lst = data_info.input.read_text().strip().split('\n')
+    for _line in line_lst:
+        try:
+            _file, _new_ref = _line.split('\t')
+            group_name = Path(_file).stem
+            set_info.logger.info(f'Begin to convert {group_name} reference sequences')
+            _new_ref_str = str(_meta_fasta[_new_ref].seq)
+            _dss_tb = pd.read_table(_file)
+            group_name = _dss_tb.iloc[0,0]
+            if sum(_dss_tb['seq'].isna()) == 1:
+                continue
+            out_lst = []
+            for _idx, _item in _dss_tb.iterrows():
+                _seq = _item['seq']
+                _gc = _item['GC']
+                _match_info = re.search(_item['seq'], _new_ref_str)
+                if not _match_info:
+                    _seq = str(Seq(_seq).reverse_complement())
+                    _match_info = re.search(_seq, _new_ref_str )
+                    _gc = '{:.1f}'.format(100 - float(_item['GC']))
+                if not _match_info:
+                    # some reverse complement DSS across the gap
+                    # may cause this error. Just skip them.
+                    continue
+                _new_start, _new_end = _match_info.span()
+                _new_start += 1 # for 1-based index
+                out_lst.append({
+                    'assembly': _new_ref,
+                    'seq': _seq,
+                    'position': str(_new_start) + '-' + str(_new_end),
+                    'GC': _gc
+                })
+            converted_tb = pd.DataFrame(out_lst)
+            converted_tb['group'] = group_name
+            converted_tb[['group', 'assembly', 'seq', 'position', 'GC']].\
+                    to_csv(data_info.output / (group_name + '_converted.txt'), sep='\t', index=False)
+            set_info.logger.info(f'{group_name} has been converted to new reference sequence')
+        except Exception as item_exception:
+            set_info.logger.error(item_exception)
+
+def generate_dict(combined_dss_tb: pd.DataFrame, length: int):
+    """_summary_
+
+    Args:
+        combined_dss_tb (pd.DataFrame): The combined DSS table
+        length (int): The DSS length
+
+    Returns:
+        pos_start_dict (dict[List]): {0: [55873,55874,...], 1:[66112,66113,...]}
+    """
+    pos_start_dict = defaultdict(list)
+    combined_dss_tb[['start', 'end']] = combined_dss_tb.position.str.split('-', expand=True)
+    combined_dss_tb[['start', 'end']] = combined_dss_tb[['start', 'end']].astype(int)
+    for _idx, _row in combined_dss_tb.iterrows():
+        pos_start_dict[_idx] = [_ for _ in range(_row['start'], _row['end'] - length + 2)]
+    return pos_start_dict
+
+def resample(data_info, set_info):
+    file_lst = data_info.input.read_text().strip().split('\n')
+    sample_num = data_info.length
+    for _file in file_lst:
+        try:
+            group_name = Path(_file).stem
+            set_info.logger.info(f'Begin to sample {sample_num} records from {group_name}')
+            _dss_tb = pd.read_table(_file)
+            _dss_tb[['start', 'end']] = _dss_tb.position.str.split('-', expand=True)
+            _dss_tb[['start', 'end']] = _dss_tb[['start', 'end']].astype(int)
+            dss_length = len(_dss_tb['seq'][0])
+            if len(_dss_tb) < sample_num:
+                sample_tb = _dss_tb
+            else: 
+                sample_start_lst = []
+                _combine_dss_tb = _combine_per_dss(_dss_tb)
+                pos_start_dict = generate_dict(_combine_dss_tb, dss_length)
+                # give priority to different combined DSS
+                while len(sample_start_lst) < sample_num:
+                    sample_start_lst += [_.pop() for _ in pos_start_dict.values() if _]
+                # reduce to the sample number
+                sample_start_lst = sample(sample_start_lst, sample_num)
+                sample_tb = _dss_tb[_dss_tb['start'].isin(sample_start_lst)].copy()
+            sample_tb.drop(['start', 'end'], axis=1, inplace=True)
+            sample_tb.to_csv(
+                    data_info.output/ (group_name + '_sampled.txt'),
+                    sep='\t',
+                    index=False
+                )
+            set_info.logger.info(f'{group_name} has been sampled to {len(sample_tb)} records')
+        except Exception as item_exception:
+            set_info.logger.error(item_exception)

@@ -11,7 +11,7 @@ import logging
 import PySimpleGUI as sg
 
 from IdenDSS.identification import iden_main
-from IdenDSS.plugins import IndexDb, search_rflp, combine_dss, summary_dss
+from IdenDSS.plugins import IndexDb, search_rflp, combine_dss, summary_dss, flanking, convert
 from IdenDSS.validation import v_main
 from IdenDSS.utils import enzymes_list, SettingInfo, DataInfo
 
@@ -64,7 +64,9 @@ def plugin_tab():
     row1 = sg.Frame('Option', [
         [sg.Checkbox('Combine', k='-COMBINE-'),
          sg.Checkbox('RFLP', k='-RFLP-'),
-         sg.Checkbox('Statistic', k='-STATISTIC-')]
+         sg.Checkbox('Statistic', k='-STATISTIC-'),
+         sg.Checkbox('Convert', k='-CONVERT-'),
+         sg.Checkbox('Flanking', k='-FLANK-')]
     ])
     row2 = sg.Frame('Data setting', [
         [sg.T('Input path:',  size=15), sg.I(key='-PLUG INPUT-', size=45), sg.FileBrowse(target='-PLUG INPUT-')],
@@ -204,6 +206,12 @@ def main():
                     combine_dss(data_info, set_info)
                 if values['-STATISTIC-']:
                     summary_dss(data_info, set_info)
+                if values['-FLANK-']:
+                    # How to add a new value? Set to 200 for now
+                    data_info.length = 200
+                    flanking(data_info, set_info)
+                if  values['-CONVERT-']:
+                    convert(data_info, set_info)
             elif values['-TASK-'] == 'validate':
                 set_info = SettingInfo(
                     tmp=Path(values['-VALI TMP_DIR-']),
