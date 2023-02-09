@@ -397,7 +397,7 @@ def convert(data_info, set_info):
             set_info.logger.error(item_exception)
 
 def generate_dict(combined_dss_tb: pd.DataFrame, length: int):
-    """_summary_
+    """Generate a start position dict for each combined DSS.
 
     Args:
         combined_dss_tb (pd.DataFrame): The combined DSS table
@@ -406,14 +406,20 @@ def generate_dict(combined_dss_tb: pd.DataFrame, length: int):
     Returns:
         pos_start_dict (dict[List]): {0: [55873,55874,...], 1:[66112,66113,...]}
     """
-    pos_start_dict = defaultdict(list)
+    cdss_start_dict = defaultdict(list)
     combined_dss_tb[['start', 'end']] = combined_dss_tb.position.str.split('-', expand=True)
     combined_dss_tb[['start', 'end']] = combined_dss_tb[['start', 'end']].astype(int)
     for _idx, _row in combined_dss_tb.iterrows():
-        pos_start_dict[_idx] = [_ for _ in range(_row['start'], _row['end'] - length + 2)]
-    return pos_start_dict
+        cdss_start_dict[_idx] = [_row['assembly'] + str(_) for _ in range(_row['start'], _row['end'] - length + 2)]
+    return cdss_start_dict
 
 def resample(data_info, set_info):
+    """_summary_
+
+    Args:
+        data_info (_type_): _description_
+        set_info (_type_): _description_
+    """
     file_lst = data_info.input.read_text().strip().split('\n')
     sample_num = data_info.length
     for _file in file_lst:
@@ -423,6 +429,7 @@ def resample(data_info, set_info):
             _dss_tb = pd.read_table(_file)
             _dss_tb[['start', 'end']] = _dss_tb.position.str.split('-', expand=True)
             _dss_tb[['start', 'end']] = _dss_tb[['start', 'end']].astype(int)
+            _dss_tb['tmpid'] = _dss_tb.apply(lambda x: x['assembly'] + str(x['start']), axis=1)
             dss_length = len(_dss_tb['seq'][0])
             if len(_dss_tb) < sample_num:
                 sample_tb = _dss_tb
@@ -435,8 +442,8 @@ def resample(data_info, set_info):
                     sample_start_lst += [_.pop() for _ in pos_start_dict.values() if _]
                 # reduce to the sample number
                 sample_start_lst = sample(sample_start_lst, sample_num)
-                sample_tb = _dss_tb[_dss_tb['start'].isin(sample_start_lst)].copy()
-            sample_tb.drop(['start', 'end'], axis=1, inplace=True)
+                sample_tb = _dss_tb[_dss_tb['tmpid'].isin(sample_start_lst)].copy()
+            sample_tb.drop(['start', 'end', 'tmpid'], axis=1, inplace=True)
             sample_tb.to_csv(
                     data_info.output/ (group_name + '_sampled.txt'),
                     sep='\t',

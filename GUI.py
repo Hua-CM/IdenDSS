@@ -65,8 +65,9 @@ def plugin_tab():
         [sg.Checkbox('Combine', k='-COMBINE-'),
          sg.Checkbox('RFLP', k='-RFLP-'),
          sg.Checkbox('Statistic', k='-STATISTIC-'),
-         sg.Checkbox('Convert', k='-CONVERT-'),
-         sg.Checkbox('Flanking', k='-FLANK-')]
+         sg.Checkbox('Convert', k='-CONVERT-')],
+        [sg.Checkbox('Flanking', k='-FLANK-'),  sg.I('200', key='-FLANK VALUE-')],
+        [sg.Checkbox('Sample', k='-SAMPLE-'),  sg.I('5', key='-SAMPLE VALUE-')]
     ])
     row2 = sg.Frame('Data setting', [
         [sg.T('Input path:',  size=15), sg.I(key='-PLUG INPUT-', size=45), sg.FileBrowse(target='-PLUG INPUT-')],
@@ -207,10 +208,12 @@ def main():
                 if values['-STATISTIC-']:
                     summary_dss(data_info, set_info)
                 if values['-FLANK-']:
-                    # How to add a new value? Set to 200 for now
-                    data_info.length = 200
+                    data_info.length = int(values['-FLANK VALUE'])
                     flanking(data_info, set_info)
                 if  values['-CONVERT-']:
+                    convert(data_info, set_info)
+                if  values['-SAMPLE-']:
+                    data_info.length = int(values['-SAMPLE VALUE'])
                     convert(data_info, set_info)
             elif values['-TASK-'] == 'validate':
                 set_info = SettingInfo(

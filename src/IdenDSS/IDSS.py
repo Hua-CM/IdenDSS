@@ -18,65 +18,77 @@ from .plugins import IndexDb, search_rflp, combine_dss, summary_dss, flanking, c
 from .utils import enzymes_list, SettingInfo, DataInfo
 from .validation import v_main
 
+
+class CustomFormatter(argparse.HelpFormatter):
+    """Reduce the redundant metavar
+    """
+    def _format_action_invocation(self, action):
+        if not action.option_strings or action.nargs == 0:
+            return super()._format_action_invocation(action)
+        default = self._get_default_metavar_for_optional(action)
+        args_string = self._format_args(action, default)
+        return ', '.join(action.option_strings) + ' ' + args_string
+
 def get_args():
     """
     parse commend line arguments
     """
     parser = argparse.ArgumentParser(
-        prog='IdenDSS', description='This script was for identifying DNA signature sequences(DSS)')
+        prog='IdenDSS',
+        description='This script was for identifying DNA signature sequences(DSS)',
+        formatter_class=CustomFormatter)
     sub_parser = parser.add_subparsers(title='Available', dest='database/iden/plugin/validate')
     sub_parser.required = True
 
     database_parser = sub_parser.add_parser(
-        'index', help='Generate database for DSS identification')
-    database_parser.add_argument('-i', '--input', type=Path, required=True,
-                                 help='<File path>  The genome fasta file')
-    database_parser.add_argument('-l', '--length', type=int, default=40,
-                                 help='<Int> DSS length <default=40>')
+        'index', help='Generate database for DSS identification', formatter_class=CustomFormatter)
+    database_parser.add_argument('-i', '--input', type=Path, required=True, metavar='<FILE>',
+                                 help='The genome fasta file')
+    database_parser.add_argument('-l', '--length', type=int, default=40, metavar='<INT>',
+                                 help='DSS length <default=40>')
     database_parser.add_argument('-c', '--circular',  action='store_true',
                                  help='the sequences are circular or not')
-    database_parser.add_argument('-o', '--output', type=Path, required=True,
-                                 help='<File path>  The genome fasta output file (a BLAST database would '
+    database_parser.add_argument('-o', '--output', type=Path, required=True, metavar='<FILE>',
+                                 help='The genome fasta output file (a BLAST database would '
                                       'be constructed)')
-    database_parser.add_argument('--blast', type=Path, default=Path(''), dest='bin_dir',
-                                 help='<Directory path> BLAST exec directory <If your BLAST software not in PATH>')                                  
+    database_parser.add_argument('--blast', type=Path, default=Path(''), dest='bin_dir', metavar='<DIR>',
+                                 help='BLAST exec directory <If your BLAST software not in PATH>')
     database_parser.set_defaults(subcmd='index')
 
     probe_parser = sub_parser.add_parser(
-        'identify', help='Identification DSS based on database')
-    probe_parser.add_argument('-m', '--meta', type=Path, required=True,
-                              help='<File path> The meta file')
-    probe_parser.add_argument('-d', '--database', type=Path, required=True,
-                              help='<File path> Database fasta <Corresponding BLAST database file must in the same '
+        'identify', help='Identification DSS based on database', formatter_class=CustomFormatter)
+    probe_parser.add_argument('-m', '--meta', type=Path, required=True, metavar='<FILE>',
+                              help='The meta file')
+    probe_parser.add_argument('-d', '--database', type=Path, required=True, metavar='<FILE>',
+                              help='Database fasta <Corresponding BLAST database file must in the same '
                                    'directory>')
-    probe_parser.add_argument('-l', '--length', type=int, default=40,
-                              help='<Int> DSS length <default=40>')
+    probe_parser.add_argument('-l', '--length', type=int, default=40, metavar='<INT>',
+                              help='DSS length <default=40>')
     probe_parser.add_argument('-c', '--circular', action='store_true',
-                              help='the sequences are circular or not')
-    probe_parser.add_argument('-o', '--output', type=Path, required=True,
-                              help='<Firectory path> result directory')
-    probe_parser.add_argument('-@', '--threads', type=int, default=4,
-                              help='<Int> Threads used in BLAST <Default 4>')
-    probe_parser.add_argument('-t', '--tmp', type=Path, default=Path(gettempdir()),
-                              help='<Directory path> Temporary directory path \
-                                    (Default system temporary directory)')
-    probe_parser.add_argument('--blast', type=Path, default=Path(''), dest='bin_dir',
-                              help='<Directory path> BLAST exec directory <If your BLAST software not in PATH>')
+                              help='The sequences are circular')
+    probe_parser.add_argument('-o', '--output', type=Path, required=True, metavar='<DIR>',
+                              help='The result directory')
+    probe_parser.add_argument('-@', '--threads', type=int, default=4, metavar='<INT>',
+                              help='Threads used in BLAST <Default 4>')
+    probe_parser.add_argument('-t', '--tmp', type=Path, default=Path(gettempdir()), metavar='<DIR>',
+                              help='Temporary directory path (Default system temporary directory)')
+    probe_parser.add_argument('--blast', type=Path, default=Path(''), dest='bin_dir', metavar='<DIR>',
+                              help='BLAST exec directory <If your BLAST software not in PATH>')
     probe_parser.set_defaults(subcmd='identify')
 
     plugin_parser = sub_parser.add_parser(
-        'plugin', help='Some plugin for DSS results')
-    plugin_parser.add_argument('-i', '--input', type=Path, required=True,
-                               help='<File path>  A meta file. One DSS result file path per line. \
+        'plugin', help='Some plugin for DSS results', formatter_class=CustomFormatter)
+    plugin_parser.add_argument('-i', '--input', type=Path, required=True, metavar='<FILE>',
+                               help='A meta file. One DSS result file path per line. \
                                      Some plugins may need an extra column.')
-    plugin_parser.add_argument('-d', '--database', type=Path, required=True,
-                               help='<File path> Database fasta (The database used to identify DSS)')
+    plugin_parser.add_argument('-d', '--database', type=Path, required=True, metavar='<FILE>',
+                               help='Database fasta (The database used to identify DSS)')
     plugin_parser.add_argument('-c', '--circular', action='store_true',
-                               help='the sequences are circular or not')
-    plugin_parser.add_argument('-o', '--output', type=Path, required=True,
-                               help='<Directory path> result directory')
-    plugin_parser.add_argument('-t', '--tmp', type=Path, default=Path(gettempdir()),
-                               help='<Dir path> Temporary directory path <Default system temporary directory>')
+                               help='The sequences are circular')
+    plugin_parser.add_argument('-o', '--output', type=Path, required=True, metavar='<DIR>',
+                               help='The result directory')
+    plugin_parser.add_argument('-t', '--tmp', type=Path, default=Path(gettempdir()), metavar='<DIR>',
+                               help='Temporary directory path <Default system temporary directory>')
     plugin_parser.add_argument('--primer', action='store_true',
                                help='Design Primer (Need primer3_core in your PATH)')
     plugin_parser.add_argument('--rflp', action='store_true',
@@ -85,35 +97,35 @@ def get_args():
                                help='Generate the corresponding combined DSS file')
     plugin_parser.add_argument('--statistic', action='store_true',
                                help='Count the DSS number')
-    plugin_parser.add_argument('--flank', type=int, default=0,
+    plugin_parser.add_argument('--flank', type=int, default=0, metavar='<INT>',
                                help='Generate the flanking sequence for each. e.g., --flank 200')
     plugin_parser.add_argument('--convert', action='store_true',
                                help='Convert the DSS to the another reference assembly \
                                      (Need a scenond column with the new reference name in meta file).')
-    plugin_parser.add_argument('--sample', type=int, default=0,
+    plugin_parser.add_argument('--sample', type=int, default=0, metavar='<INT>',
                                 help='Sample N records from raw result file. This plugin give priority to \
                                       sample DSS from different combined DSS.')
-    plugin_parser.add_argument('--bin', type=Path, default=Path(''), dest='bin_dir',
-                               help='<Directory path> Primer3 exec directory <If your Primer3 software not in PATH>')
+    plugin_parser.add_argument('--bin', type=Path, default=Path(''), dest='bin_dir', metavar='<DIR>',
+                               help='Primer3 exec directory <If your Primer3 software not in PATH>')
     plugin_parser.set_defaults(subcmd='plugin')
 
     validate_parser = sub_parser.add_parser(
-        'validate', help='Validate DSS using HTS file. MUST BE DSS, NOT COMBINED DSS')
-    validate_parser.add_argument('-i', '--input', type=Path, required=True,
-                                 help='<File path> ')
-    validate_parser.add_argument('--sp', required=True, type=str, dest='sp',
-                                 help='<File path> The intraspecies HTS FASTQ file \
+        'validate', help='Validate DSS using HTS file. MUST BE DSS, NOT COMBINED DSS', formatter_class=CustomFormatter)
+    validate_parser.add_argument('-i', '--input', type=Path, required=True, metavar='<FILE>',
+                                 help='The DSS result file path')
+    validate_parser.add_argument('--sp', required=True, type=str, dest='sp', metavar='<FILE>',
+                                 help='The intraspecies HTS FASTQ file \
                                  (could be a list, seperate by comma)')
-    validate_parser.add_argument('--bg', required=True, type=str, dest='bg',
-                                 help='<File path> The  background species HTS \
+    validate_parser.add_argument('--bg', required=True, type=str, dest='bg', metavar='<FILE>',
+                                 help='The  background species HTS \
                                  FASTQ file (could be a list, seperate by comma)')
-    validate_parser.add_argument('-o', '--output', type=Path, required=True,
-                                 help='<File path> validated DSS result path')
-    validate_parser.add_argument('-t', '--tmp', type=Path, default=Path(gettempdir()),
-                                 help='<Directory path> Temporary directory path \
+    validate_parser.add_argument('-o', '--output', type=Path, required=True, metavar='<FILE>',
+                                 help='The validated DSS result path')
+    validate_parser.add_argument('-t', '--tmp', type=Path, default=Path(gettempdir()), metavar='<DIR>',
+                                 help='Temporary directory path \
                                        <Default system temporary directory>')
-    validate_parser.add_argument('--bin', type=Path, default=Path(''),
-                                 help='<Directory path> KMC3 exec directory, containing kmc and kmc_dump \
+    validate_parser.add_argument('--bin', type=Path, default=Path(''), metavar='<DIR>',
+                                 help='KMC3 exec directory, containing kmc and kmc_dump \
                                        <If your KMC3 software not in PATH>')
     validate_parser.set_defaults(subcmd='validate')
 
